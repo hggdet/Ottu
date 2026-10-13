@@ -14,51 +14,52 @@ struct AppSettingsView: View {
     let onRemoveSavedPlace: (Place) -> Void
     let onRemoveCommunityPlace: (Place) -> Void
 
+    private var interfaceLocale: Locale {
+        selectedLanguage == "system" ? Locale.autoupdatingCurrent : Locale(identifier: selectedLanguage)
+    }
+
+    private var isRightToLeft: Bool {
+        let language = interfaceLocale.language.languageCode?.identifier ?? "ar"
+        return language == "ar" || language == "ku"
+    }
+
     var body: some View {
         NavigationStack {
             Form {
-                Section("settings.preferences") {
-                    Picker("settings.language", selection: $selectedLanguage) {
-                        Text("settings.language.system").tag("system")
-                        Text("settings.language.arabic").tag("ar")
-                        Text("settings.language.english").tag("en")
-                        Text("settings.language.kurdish").tag("ku")
-                    }
-                    Picker("settings.appearance", selection: $selectedAppearance) {
-                        Label("settings.appearance.system", systemImage: "iphone").tag("system")
-                        Label("settings.appearance.light", systemImage: "sun.max").tag("light")
-                        Label("settings.appearance.dark", systemImage: "moon").tag("dark")
-                    }
+                Picker("settings.language", selection: $selectedLanguage) {
+                    Text("settings.language.system").tag("system")
+                    Text("settings.language.arabic").tag("ar")
+                    Text("settings.language.english").tag("en")
+                    Text("settings.language.kurdish").tag("ku")
                 }
 
-                Section("settings.management") {
-                    NavigationLink {
-                        SavedPlacesListView(
-                            savedPlaces: savedPlaces,
-                            communityPlaces: communityPlaces,
-                            onSelect: onSelectPlace,
-                            onDismiss: { dismiss() },
-                            onRemoveSaved: onRemoveSavedPlace,
-                            onRemoveCommunity: onRemoveCommunityPlace
-                        )
-                    } label: {
-                        Label("settings.manage_places", systemImage: "mappin.and.ellipse")
-                    }
-                    NavigationLink {
-                        OfflineMapsSettingsView(
-                            manager: offlineManager,
-                            mapCenter: mapCenter,
-                            isDark: isDark
-                        )
-                    } label: {
-                        Label("settings.manage_maps", systemImage: "map")
-                    }
+                Picker("settings.appearance", selection: $selectedAppearance) {
+                    Label("settings.appearance.system", systemImage: "iphone").tag("system")
+                    Label("settings.appearance.light", systemImage: "sun.max").tag("light")
+                    Label("settings.appearance.dark", systemImage: "moon").tag("dark")
                 }
 
-                Section {
-                    Text("settings.local_data_note")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                NavigationLink {
+                    SavedPlacesListView(
+                        savedPlaces: savedPlaces,
+                        communityPlaces: communityPlaces,
+                        onSelect: onSelectPlace,
+                        onDismiss: { dismiss() },
+                        onRemoveSaved: onRemoveSavedPlace,
+                        onRemoveCommunity: onRemoveCommunityPlace
+                    )
+                } label: {
+                    Label("settings.manage_places", systemImage: "mappin.and.ellipse")
+                }
+
+                NavigationLink {
+                    OfflineMapsSettingsView(
+                        manager: offlineManager,
+                        mapCenter: mapCenter,
+                        isDark: isDark
+                    )
+                } label: {
+                    Label("settings.manage_maps", systemImage: "map")
                 }
             }
             .navigationTitle("settings.title")
@@ -71,6 +72,8 @@ struct AppSettingsView: View {
                 }
             }
         }
+        .environment(\.locale, interfaceLocale)
+        .environment(\.layoutDirection, isRightToLeft ? .rightToLeft : .leftToRight)
     }
 }
 
@@ -83,50 +86,43 @@ private struct OfflineMapsSettingsView: View {
 
     var body: some View {
         Form {
-            Section("settings.offline_maps") {
-                if manager.hasOfflineArea {
-                    Label {
-                        Text(LocalizedStringKey(manager.statusKey ?? (manager.isDownloading ? "offline.downloading" : "offline.complete")))
-                    } icon: {
-                        Image(systemName: manager.isDownloading ? "arrow.down.circle" : "checkmark.circle.fill")
-                    }
-                    .foregroundStyle(manager.isDownloading ? Color.secondary : Color.green)
-
-                    if let progress = manager.progress, manager.isDownloading {
-                        ProgressView(value: progress)
-                    }
-                    if let size = manager.offlineAreaSize {
-                        LabeledContent("settings.storage_used", value: size)
-                    }
-                    Button(role: .destructive) {
-                        confirmRemove = true
-                    } label: {
-                        Label("offline.remove", systemImage: "trash")
-                    }
-                } else {
-                    ContentUnavailableView(
-                        "offline.empty_title",
-                        systemImage: "map",
-                        description: Text("offline.empty_hint")
-                    )
-                    Button {
-                        manager.downloadArea(
-                            around: mapCenter,
-                            styleURL: MapConfiguration.styleURL(isDark: isDark)
-                        )
-                    } label: {
-                        Label("offline.download", systemImage: "arrow.down.circle")
-                    }
+            if manager.hasOfflineArea {
+                Label {
+                    Text(LocalizedStringKey(manager.statusKey ?? (manager.isDownloading ? "offline.downloading" : "offline.complete")))
+                } icon: {
+                    Image(systemName: manager.isDownloading ? "arrow.down.circle" : "checkmark.circle.fill")
                 }
-                if let statusKey = manager.statusKey, !manager.hasOfflineArea {
-                    Text(LocalizedStringKey(statusKey))
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                .foregroundStyle(manager.isDownloading ? Color.secondary : Color.green)
+
+                if let progress = manager.progress, manager.isDownloading {
+                    ProgressView(value: progress)
+                }
+                if let size = manager.offlineAreaSize {
+                    LabeledContent("settings.storage_used", value: size)
+                }
+                Button(role: .destructive) {
+                    confirmRemove = true
+                } label: {
+                    Label("offline.remove", systemImage: "trash")
+                }
+            } else {
+                ContentUnavailableView(
+                    "offline.empty_title",
+                    systemImage: "map",
+                    description: Text("offline.empty_hint")
+                )
+                Button {
+                    manager.downloadArea(
+                        around: mapCenter,
+                        styleURL: MapConfiguration.styleURL(isDark: isDark)
+                    )
+                } label: {
+                    Label("offline.download", systemImage: "arrow.down.circle")
                 }
             }
 
-            Section {
-                Text("settings.offline_note")
+            if let statusKey = manager.statusKey, !manager.hasOfflineArea {
+                Text(LocalizedStringKey(statusKey))
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }

@@ -39,6 +39,7 @@ targets:
           - UIInterfaceOrientationLandscapeRight
     settings:
       base:
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         CODE_SIGN_ENTITLEMENTS: Support/Ottu.entitlements
         PRODUCT_BUNDLE_IDENTIFIER: iq.ottu.ios
         PRODUCT_NAME: Ottu

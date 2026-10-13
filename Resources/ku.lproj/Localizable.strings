@@ -38,8 +38,9 @@
 "directions.from_map_center" = "لە ناوەندی ئێستای نەخشەوە";
 "directions.summary_format" = "%.1f کم · نزیکەی %d خولەک";
 "navigation.home" = "سەرەکی";
-"navigation.search" = "گەڕان";
 "navigation.categories" = "پۆلەکان";
+"navigation.settings" = "ڕێکخستنەکان";
+"navigation.saved" = "پاشەکەوتکراوەکان";
 "categories.place_types" = "گەڕان بە پێی جۆری شوێن";
 "categories.map_tools" = "ئامرازەکانی نەخشە";
 "categories.restaurants" = "چێشتخانەکان";
@@ -73,7 +74,6 @@
 "incident.saved_title" = "ڕاپۆرت پاشەکەوت کرا";
 "incident.saved_message" = "خرایە ناو تۆماری ناوخۆیی ئامێرەکەت.";
 "settings.title" = "ڕێکخستنەکان";
-"settings.preferences" = "هەڵبژاردەکان";
 "settings.language" = "زمانی ئەپ";
 "settings.language.system" = "شوێنکەوتنی زمانی ئامێر";
 "settings.language.arabic" = "العربية";
@@ -83,13 +83,10 @@
 "settings.appearance.system" = "شوێنکەوتنی ڕێکخستنی ئامێر";
 "settings.appearance.light" = "ڕووناک";
 "settings.appearance.dark" = "تاریک";
-"settings.management" = "بەڕێوەبردنی داتا";
 "settings.manage_places" = "بەڕێوەبردنی شوێنە ناوخۆییەکان";
 "settings.manage_maps" = "بەڕێوەبردنی نەخشەکانی بێ ئینتەرنێت";
-"settings.local_data_note" = "شوێن و ڕاپۆرتەکان تەنها لەم ئامێرەدا پاشەکەوت دەکرێن.";
 "settings.offline_maps" = "نەخشەکانی بێ ئینتەرنێت";
 "settings.storage_used" = "بڕی شوێنی بەکارهاتوو";
-"settings.offline_note" = "داگرتنەکە ناوچەیەکی بچووک لە دەوری ناوەندی ئێستای نەخشە دەگرێتەوە، نەک هەموو عێراق.";
 "offline.empty_title" = "هیچ نەخشەیەک داونەگیراوە";
 "offline.empty_hint" = "ناوچەی ئێستای نەخشە دابگرە بۆ بەکارهێنانی بەبێ ئینتەرنێت.";
 "offline.remove" = "سڕینەوەی داگرتن";

@@ -38,8 +38,9 @@
 "directions.from_map_center" = "From the current map center";
 "directions.summary_format" = "%.1f km · about %d min";
 "navigation.home" = "Home";
-"navigation.search" = "Search";
 "navigation.categories" = "Categories";
+"navigation.settings" = "Settings";
+"navigation.saved" = "Saved";
 "categories.place_types" = "Search by place type";
 "categories.map_tools" = "Map tools";
 "categories.restaurants" = "Restaurants";
@@ -73,7 +74,6 @@
 "incident.saved_title" = "Report saved";
 "incident.saved_message" = "Added to the local record on your device.";
 "settings.title" = "Settings";
-"settings.preferences" = "Preferences";
 "settings.language" = "App language";
 "settings.language.system" = "Follow device language";
 "settings.language.arabic" = "العربية";
@@ -83,13 +83,10 @@
 "settings.appearance.system" = "Follow device setting";
 "settings.appearance.light" = "Light";
 "settings.appearance.dark" = "Dark";
-"settings.management" = "Data management";
 "settings.manage_places" = "Manage local places";
 "settings.manage_maps" = "Manage offline maps";
-"settings.local_data_note" = "Places and reports are stored only on this device.";
 "settings.offline_maps" = "Offline maps";
 "settings.storage_used" = "Storage used";
-"settings.offline_note" = "The download covers a small area around the current map center, not all of Iraq.";
 "offline.empty_title" = "No maps downloaded";
 "offline.empty_hint" = "Download the current map area to use it offline.";
 "offline.remove" = "Delete download";

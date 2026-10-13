@@ -10,6 +10,8 @@ struct MapHomeView: View {
     @State private var query = ""
     @State private var results: [Place] = []
     @State private var activeSheet: HomeSheet?
+    @State private var isSettingsPresented = false
+    @State private var placeToShowAfterSettings: Place?
     @State private var focusedPlace: Place?
     @State private var routePlan: RoutePlan?
     @State private var routeTarget: Place?
@@ -46,7 +48,7 @@ struct MapHomeView: View {
             .ignoresSafeArea()
 
             VStack(spacing: 10) {
-                header
+                searchPanel
                 Spacer(minLength: 0)
                 if let routeTarget {
                     routeSummary(for: routeTarget)
@@ -65,7 +67,6 @@ struct MapHomeView: View {
                     .padding(.vertical, 7)
                     .background(.regularMaterial, in: Capsule())
                 }
-                searchPanel
             }
             .padding(.horizontal, 14)
             .padding(.top, 8)
@@ -78,9 +79,6 @@ struct MapHomeView: View {
                 .padding(.bottom, 8)
         }
         .task(id: query) { await searchPlaces(for: query) }
-        .onChange(of: searchFocused) { _, isFocused in
-            if isFocused { selectedTab = .search }
-        }
         .onChange(of: locationManager.coordinate) { _, coordinate in
             guard locateWhenReady, let coordinate else { return }
             locateWhenReady = false
@@ -90,6 +88,28 @@ struct MapHomeView: View {
             sheetContent(for: sheet)
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
+        }
+        .fullScreenCover(isPresented: $isSettingsPresented, onDismiss: {
+            if selectedTab == .settings { selectedTab = .home }
+            if let place = placeToShowAfterSettings {
+                placeToShowAfterSettings = nil
+                activeSheet = .place(place)
+            }
+        }) {
+            AppSettingsView(
+                savedPlaces: localStore.savedPlaces,
+                communityPlaces: localStore.communityPlaces,
+                offlineManager: offlineManager,
+                mapCenter: mapCenter,
+                isDark: colorScheme == .dark,
+                onSelectPlace: { place in
+                    focusedPlace = place
+                    placeToShowAfterSettings = place
+                    isSettingsPresented = false
+                },
+                onRemoveSavedPlace: { localStore.removeSavedPlace($0) },
+                onRemoveCommunityPlace: { localStore.removeCommunityPlace($0) }
+            )
         }
         .alert(activeErrorTitle, isPresented: Binding(
             get: { activeErrorMessage != nil },
@@ -103,50 +123,8 @@ struct MapHomeView: View {
         }
     }
 
-    private var header: some View {
-        HStack(spacing: 9) {
-            Image(systemName: "location.north.circle.fill")
-                .font(.title2)
-                .foregroundStyle(.tint)
-            Text("app.name")
-                .font(.headline.weight(.semibold))
-            Spacer(minLength: 0)
-            Text("map.city")
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(.secondary)
-            Button {
-                activeSheet = .saved
-            } label: {
-                Image(systemName: "bookmark.fill")
-                    .font(.subheadline)
-                    .frame(width: 36, height: 36)
-                    .background(.thinMaterial, in: Circle())
-            }
-            .accessibilityLabel(Text("saved.title"))
-            Button {
-                activeSheet = .settings
-            } label: {
-                Image(systemName: "gearshape.fill")
-                    .font(.subheadline)
-                    .frame(width: 36, height: 36)
-                    .background(.thinMaterial, in: Circle())
-            }
-            .accessibilityLabel(Text("settings.title"))
-        }
-        .padding(.leading, 14)
-        .padding(.trailing, 7)
-        .frame(height: 50)
-        .background(.ultraThinMaterial, in: Capsule())
-        .overlay(Capsule().strokeBorder(.white.opacity(0.25), lineWidth: 1))
-        .shadow(color: .black.opacity(0.1), radius: 10, y: 3)
-    }
-
     private var searchPanel: some View {
         VStack(spacing: 8) {
-            if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                resultsPanel
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-            }
             HStack(spacing: 10) {
                 Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
                 TextField("search.placeholder", text: $query)
@@ -172,6 +150,10 @@ struct MapHomeView: View {
             .background(.ultraThinMaterial, in: Capsule())
             .overlay(Capsule().strokeBorder(.white.opacity(0.25), lineWidth: 1))
             .shadow(color: .black.opacity(0.12), radius: 12, y: 4)
+            if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                resultsPanel
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
         }
         .animation(.easeInOut(duration: 0.2), value: results.count)
     }
@@ -310,20 +292,6 @@ struct MapHomeView: View {
                 onSave: { localStore.addIncident($0) },
                 onCancel: { activeSheet = nil }
             )
-        case .settings:
-            AppSettingsView(
-                savedPlaces: localStore.savedPlaces,
-                communityPlaces: localStore.communityPlaces,
-                offlineManager: offlineManager,
-                mapCenter: mapCenter,
-                isDark: colorScheme == .dark,
-                onSelectPlace: { place in
-                    focusedPlace = place
-                    activeSheet = .place(place)
-                },
-                onRemoveSavedPlace: { localStore.removeSavedPlace($0) },
-                onRemoveCommunityPlace: { localStore.removeCommunityPlace($0) }
-            )
         case .categories:
             MapCategoriesSheet(
                 locale: locale,
@@ -362,12 +330,16 @@ struct MapHomeView: View {
         case .home:
             searchFocused = false
             activeSheet = nil
-        case .search:
-            activeSheet = nil
-            searchFocused = true
         case .categories:
             searchFocused = false
             activeSheet = .categories
+        case .settings:
+            searchFocused = false
+            activeSheet = nil
+            isSettingsPresented = true
+        case .saved:
+            searchFocused = false
+            activeSheet = .saved
         }
     }
 
@@ -468,7 +440,6 @@ private enum HomeSheet: Identifiable {
     case saved
     case addPlace(GeoCoordinate)
     case report(GeoCoordinate)
-    case settings
     case categories
 
     var id: String {
@@ -477,7 +448,6 @@ private enum HomeSheet: Identifiable {
         case .saved: return "saved"
         case .addPlace(let coordinate): return "add-\(coordinate.latitude)-\(coordinate.longitude)"
         case .report(let coordinate): return "report-\(coordinate.latitude)-\(coordinate.longitude)"
-        case .settings: return "settings"
         case .categories: return "categories"
         }
     }

@@ -38,8 +38,9 @@
 "directions.from_map_center" = "من مركز الخريطة الحالي";
 "directions.summary_format" = "%.1f كم · %d دقيقة تقريبًا";
 "navigation.home" = "الرئيسية";
-"navigation.search" = "بحث";
 "navigation.categories" = "التصنيفات";
+"navigation.settings" = "الإعدادات";
+"navigation.saved" = "المحفوظات";
 "categories.place_types" = "ابحث حسب نوع المكان";
 "categories.map_tools" = "أدوات الخريطة";
 "categories.restaurants" = "مطاعم";
@@ -73,7 +74,6 @@
 "incident.saved_title" = "تم حفظ البلاغ";
 "incident.saved_message" = "أُضيف إلى السجل المحلي على جهازك.";
 "settings.title" = "الإعدادات";
-"settings.preferences" = "التفضيلات";
 "settings.language" = "لغة التطبيق";
 "settings.language.system" = "اتباع لغة الجهاز";
 "settings.language.arabic" = "العربية";
@@ -83,13 +83,10 @@
 "settings.appearance.system" = "اتباع إعداد الجهاز";
 "settings.appearance.light" = "فاتح";
 "settings.appearance.dark" = "داكن";
-"settings.management" = "إدارة البيانات";
 "settings.manage_places" = "إدارة الأماكن المحلية";
 "settings.manage_maps" = "إدارة الخرائط دون اتصال";
-"settings.local_data_note" = "تُحفظ الأماكن والبلاغات على هذا الجهاز فقط.";
 "settings.offline_maps" = "الخرائط دون اتصال";
 "settings.storage_used" = "المساحة المستخدمة";
-"settings.offline_note" = "يشمل التنزيل نطاقًا صغيرًا حول مركز الخريطة الحالي، وليس العراق كاملًا.";
 "offline.empty_title" = "لا توجد خرائط منزّلة";
 "offline.empty_hint" = "نزّل نطاق الخريطة الحالي لاستخدامه دون اتصال.";
 "offline.remove" = "حذف التنزيل";
