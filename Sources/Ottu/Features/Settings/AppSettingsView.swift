@@ -90,7 +90,7 @@ private struct OfflineMapsSettingsView: View {
                     } icon: {
                         Image(systemName: manager.isDownloading ? "arrow.down.circle" : "checkmark.circle.fill")
                     }
-                    .foregroundStyle(manager.isDownloading ? .secondary : .green)
+                    .foregroundStyle(manager.isDownloading ? Color.secondary : Color.green)
 
                     if let progress = manager.progress, manager.isDownloading {
                         ProgressView(value: progress)
