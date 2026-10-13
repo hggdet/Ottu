@@ -6,78 +6,16 @@ struct MapCategoriesSheet: View {
     let onSelectAction: (MapCategoryAction) -> Void
     let onDismiss: () -> Void
 
-    private let columns = [GridItem(.flexible()), GridItem(.flexible())]
+    private var columns: [GridItem] {
+        [GridItem(.flexible()), GridItem(.flexible())]
+    }
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("categories.place_types")
-                            .font(.headline)
-                            .padding(.horizontal, 2)
-                        LazyVGrid(columns: columns, spacing: 12) {
-                            ForEach(MapPlaceCategory.allCases) { category in
-                                Button {
-                                    onSelectCategory(String(localized: category.queryResource, locale: locale))
-                                } label: {
-                                    VStack(spacing: 11) {
-                                        Image(systemName: category.symbol)
-                                            .font(.system(size: 24, weight: .regular))
-                                            .foregroundStyle(.tint)
-                                        Text(category.title)
-                                            .font(.subheadline.weight(.medium))
-                                            .foregroundStyle(.primary)
-                                            .multilineTextAlignment(.center)
-                                    }
-                                    .frame(maxWidth: .infinity, minHeight: 92)
-                                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                                    .overlay {
-                                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                            .strokeBorder(Color.primary.opacity(0.06), lineWidth: 1)
-                                    }
-                                    .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                                }
-                                .buttonStyle(.plain)
-                                .accessibilityLabel(Text(category.title))
-                            }
-                        }
-                    }
-
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("categories.map_tools")
-                            .font(.headline)
-                            .padding(.horizontal, 2)
-                        LazyVGrid(columns: columns, spacing: 12) {
-                            ForEach(MapCategoryAction.allCases) { action in
-                                Button {
-                                    onSelectAction(action)
-                                } label: {
-                                    HStack(spacing: 11) {
-                                        Image(systemName: action.symbol)
-                                            .font(.system(size: 19, weight: .regular))
-                                            .foregroundStyle(.tint)
-                                            .frame(width: 24)
-                                        Text(action.title)
-                                            .font(.subheadline.weight(.medium))
-                                            .foregroundStyle(.primary)
-                                            .multilineTextAlignment(.leading)
-                                        Spacer(minLength: 0)
-                                    }
-                                    .padding(.horizontal, 14)
-                                    .frame(maxWidth: .infinity, minHeight: 70)
-                                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                                    .overlay {
-                                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                            .strokeBorder(Color.primary.opacity(0.06), lineWidth: 1)
-                                    }
-                                    .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                                }
-                                .buttonStyle(.plain)
-                                .accessibilityLabel(Text(action.title))
-                            }
-                        }
-                    }
+                    placeTypesSection
+                    mapToolsSection
                 }
                 .padding(20)
             }
@@ -90,6 +28,85 @@ struct MapCategoriesSheet: View {
                 }
             }
         }
+    }
+
+    private var placeTypesSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("categories.place_types")
+                .font(.headline)
+                .padding(.horizontal, 2)
+            LazyVGrid(columns: columns, spacing: 12) {
+                ForEach(MapPlaceCategory.allCases) { category in
+                    placeCategoryButton(category)
+                }
+            }
+        }
+    }
+
+    private var mapToolsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("categories.map_tools")
+                .font(.headline)
+                .padding(.horizontal, 2)
+            LazyVGrid(columns: columns, spacing: 12) {
+                ForEach(MapCategoryAction.allCases) { action in
+                    mapActionButton(action)
+                }
+            }
+        }
+    }
+
+    private func placeCategoryButton(_ category: MapPlaceCategory) -> some View {
+        Button {
+            onSelectCategory(String(localized: category.queryResource, locale: locale))
+        } label: {
+            VStack(spacing: 11) {
+                Image(systemName: category.symbol)
+                    .font(.system(size: 24, weight: .regular))
+                    .foregroundStyle(.tint)
+                Text(category.title)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.primary)
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity, minHeight: 92)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .strokeBorder(Color.primary.opacity(0.06), lineWidth: 1)
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text(category.title))
+    }
+
+    private func mapActionButton(_ action: MapCategoryAction) -> some View {
+        Button {
+            onSelectAction(action)
+        } label: {
+            HStack(spacing: 11) {
+                Image(systemName: action.symbol)
+                    .font(.system(size: 19, weight: .regular))
+                    .foregroundStyle(.tint)
+                    .frame(width: 24)
+                Text(action.title)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.primary)
+                    .multilineTextAlignment(.leading)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 14)
+            .frame(maxWidth: .infinity, minHeight: 70)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .strokeBorder(Color.primary.opacity(0.06), lineWidth: 1)
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text(action.title))
     }
 }
 
