@@ -15,10 +15,11 @@ struct MapHomeView: View {
     @State private var focusedPlace: Place?
     @State private var routePlan: RoutePlan?
     @State private var routeTarget: Place?
-    @State private var routeUsesCurrentLocation = false
     @State private var routeTask: Task<Void, Never>?
     @State private var mapCenter = MapConfiguration.initialCenter
-    @State private var selectedTab: MapNavigationTab = .home
+    @State private var selectedTab: MapNavigationTab = .location
+    @AppStorage("ottu.liquidGlassIntensity") private var liquidGlassIntensity = 1.0
+    @AppStorage("ottu.distanceUnit") private var distanceUnit = "km"
     @State private var isSearching = false
     @State private var isRouting = false
     @State private var locateWhenReady = false
@@ -73,7 +74,11 @@ struct MapHomeView: View {
             .padding(.bottom, 8)
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            FloatingGlassNavigationBar(selection: $selectedTab, onSelect: selectNavigationTab)
+            FloatingGlassNavigationBar(
+                selection: $selectedTab,
+                glassIntensity: liquidGlassIntensity,
+                onSelect: selectNavigationTab
+            )
                 .padding(.horizontal, 24)
                 .padding(.top, 10)
                 .padding(.bottom, 8)
@@ -90,7 +95,7 @@ struct MapHomeView: View {
                 .presentationDragIndicator(.visible)
         }
         .fullScreenCover(isPresented: $isSettingsPresented, onDismiss: {
-            if selectedTab == .settings { selectedTab = .home }
+            if selectedTab == .settings { selectedTab = .location }
             if let place = placeToShowAfterSettings {
                 placeToShowAfterSettings = nil
                 activeSheet = .place(place)
@@ -225,15 +230,12 @@ struct MapHomeView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(place.name).font(.subheadline.weight(.semibold)).lineLimit(1)
                 if let routePlan {
-                    Text(String(format: String(localized: "directions.summary_format", locale: locale), routePlan.distanceKilometers, routePlan.durationMinutes))
+                    Text(routeSummaryText(for: routePlan))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 } else if isRouting {
                     Text("directions.calculating").font(.caption).foregroundStyle(.secondary)
                 }
-                Text(routeUsesCurrentLocation ? "directions.from_my_location" : "directions.from_map_center")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
             }
             Spacer()
             Button {
@@ -250,6 +252,13 @@ struct MapHomeView: View {
         .padding(.vertical, 10)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         .shadow(color: .black.opacity(0.1), radius: 10, y: 3)
+    }
+
+    private func routeSummaryText(for plan: RoutePlan) -> String {
+        let usesMiles = distanceUnit == "mi"
+        let distance = usesMiles ? plan.distanceKilometers * 0.621371 : plan.distanceKilometers
+        let formatKey = usesMiles ? "directions.summary_format_miles" : "directions.summary_format"
+        return String(format: String(localized: formatKey, locale: locale), distance, plan.durationMinutes)
     }
 
     @ViewBuilder
@@ -327,9 +336,10 @@ struct MapHomeView: View {
 
     private func selectNavigationTab(_ tab: MapNavigationTab) {
         switch tab {
-        case .home:
+        case .location:
             searchFocused = false
             activeSheet = nil
+            centerOnMyLocation()
         case .categories:
             searchFocused = false
             activeSheet = .categories
@@ -337,9 +347,6 @@ struct MapHomeView: View {
             searchFocused = false
             activeSheet = nil
             isSettingsPresented = true
-        case .saved:
-            searchFocused = false
-            activeSheet = .saved
         }
     }
 
@@ -414,7 +421,6 @@ struct MapHomeView: View {
         isRouting = true
         routePlan = nil
         routeTarget = place
-        routeUsesCurrentLocation = locationManager.coordinate != nil
         let origin = locationManager.coordinate ?? mapCenter
         routeTask = Task {
             defer { isRouting = false }

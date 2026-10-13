@@ -4,7 +4,7 @@
 
 ## الموجود في هذه النسخة
 
-- خريطة ملء الشاشة بنمطي OpenFreeMap الفاتح والداكن، مع إسناد الخريطة الذي توفره المكتبة والنمط.
+- خريطة ملء الشاشة بنمطي OpenFreeMap الفاتح والداكن، مع إسناد مرئي ومدمج لمصادر الخريطة.
 - بحث أماكن عبر Photon مع تضمين الأماكن المحفوظة والمحلية في نتائج البحث.
 - تحديد المكان ومشاركة رابط إحداثيات OpenStreetMap.
 - المفضلة والأماكن التي يضيفها المستخدم تحفظ محليًا على الجهاز.
@@ -64,6 +64,7 @@ xcodebuild -project Ottu.xcodeproj -scheme Ottu -sdk iphoneos \
 - البحث: Photon عبر `https://photon.komoot.io/api/`.
 - التوجيه: OSRM demo endpoint عبر `https://router.project-osrm.org/`.
 - بيانات الخرائط: OpenStreetMap؛ أبقِ إسناد MapLibre/OpenFreeMap/OSM ظاهرًا.
+- الأيقونات: أصول Iconly الأصلية المجانية `Location` و`Category` و`Setting` بنمط `Light`، ضمن `Sources/Ottu/Assets.xcassets`؛ يُستحسن الإسناد وفق [دليل الترخيص](https://iconly.pro/pages/licensing-guide).
 - MapLibre Native مضاف كاعتماد Swift Package ومثبت على revision في `project.yml`.
 
 راجع شروط واستخدام مزودي الأطراف الثالثة وسعاتهم قبل إطلاق عام أو تنزيل كميات كبيرة من البلاطات.

@@ -3,7 +3,9 @@ import SwiftUI
 struct AppSettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @AppStorage("ottu.language") private var selectedLanguage = "system"
+    @AppStorage("ottu.distanceUnit") private var distanceUnit = "km"
     @AppStorage("ottu.appearance") private var selectedAppearance = "system"
+    @AppStorage("ottu.liquidGlassIntensity") private var liquidGlassIntensity = 1.0
 
     let savedPlaces: [Place]
     let communityPlaces: [Place]
@@ -33,10 +35,39 @@ struct AppSettingsView: View {
                     Text("settings.language.kurdish").tag("ku")
                 }
 
+                Picker("settings.distance_unit", selection: $distanceUnit) {
+                    Text("settings.distance.kilometers").tag("km")
+                    Text("settings.distance.miles").tag("mi")
+                }
+
                 Picker("settings.appearance", selection: $selectedAppearance) {
                     Label("settings.appearance.system", systemImage: "iphone").tag("system")
                     Label("settings.appearance.light", systemImage: "sun.max").tag("light")
                     Label("settings.appearance.dark", systemImage: "moon").tag("dark")
+                }
+
+                Section {
+                    VStack(spacing: 8) {
+                        Slider(value: $liquidGlassIntensity, in: 0...1, step: 0.01)
+                            .accessibilityLabel(Text("settings.liquid_glass"))
+                            .accessibilityValue(Text("\(Int((liquidGlassIntensity * 100).rounded()))%"))
+
+                        HStack {
+                            Text("0%")
+                            Spacer()
+                            Text("100%")
+                        }
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    }
+                } header: {
+                    HStack {
+                        Text("settings.liquid_glass")
+                        Spacer()
+                        Text("\(Int((liquidGlassIntensity * 100).rounded()))%")
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
                 }
 
                 NavigationLink {
@@ -49,7 +80,7 @@ struct AppSettingsView: View {
                         onRemoveCommunity: onRemoveCommunityPlace
                     )
                 } label: {
-                    Label("settings.manage_places", systemImage: "mappin.and.ellipse")
+                    Label("navigation.saved", systemImage: "bookmark.fill")
                 }
 
                 NavigationLink {
@@ -59,12 +90,37 @@ struct AppSettingsView: View {
                         isDark: isDark
                     )
                 } label: {
-                    Label("settings.manage_maps", systemImage: "map")
+                    Label {
+                        Text("settings.manage_maps")
+                    } icon: {
+                        Image("IconlyLocation")
+                            .renderingMode(.template)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 18, height: 18)
+                    }
+                }
+                Link(destination: URL(string: "mailto:pbgpfk7ofwz729ekxamzqk@onmanus.ai")!) {
+                    Label("settings.contact_report", systemImage: "envelope")
                 }
             }
             .navigationTitle("settings.title")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    HStack(spacing: 6) {
+                        Image("IconlySetting")
+                            .renderingMode(.template)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 17, height: 17)
+                        Text("settings.title")
+                            .font(.headline)
+                    }
+                    .foregroundStyle(.primary)
+                    .accessibilityElement(children: .combine)
+                }
+
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(action: { dismiss() }) {
                         Label("common.done", systemImage: "checkmark")

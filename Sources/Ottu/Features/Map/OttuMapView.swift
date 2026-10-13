@@ -18,6 +18,8 @@ struct OttuMapView: UIViewRepresentable {
         let mapView = MLNMapView(frame: .zero, styleURL: styleURL)
         context.coordinator.currentStyleURL = styleURL
         mapView.delegate = context.coordinator
+        mapView.compassView.isHidden = true
+        mapView.showsAttributionButton = false
         mapView.showsUserLocation = true
         mapView.setCenter(
             MapConfiguration.initialCenter.clCoordinate,

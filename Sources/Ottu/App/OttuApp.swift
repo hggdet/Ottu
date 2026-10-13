@@ -4,6 +4,8 @@ import SwiftUI
 struct OttuApp: App {
     @AppStorage("ottu.language") private var selectedLanguage = "system"
     @AppStorage("ottu.appearance") private var selectedAppearance = "system"
+    @AppStorage("ottu.initialSetupCompleted") private var isInitialSetupComplete = false
+    @AppStorage("ottu.welcomeMotionCompleted") private var hasSeenWelcomeMotion = false
 
     private var interfaceLocale: Locale {
         selectedLanguage == "system" ? Locale.autoupdatingCurrent : Locale(identifier: selectedLanguage)
@@ -24,7 +26,19 @@ struct OttuApp: App {
 
     var body: some Scene {
         WindowGroup {
-            MapHomeView()
+            Group {
+                if isInitialSetupComplete {
+                    MapHomeView()
+                } else if hasSeenWelcomeMotion {
+                    FirstRunSetupView()
+                } else {
+                    WelcomeMotionView {
+                        withAnimation(.easeInOut(duration: 0.45)) {
+                            hasSeenWelcomeMotion = true
+                        }
+                    }
+                }
+            }
                 .environment(\.locale, interfaceLocale)
                 .environment(\.layoutDirection, isRightToLeft ? .rightToLeft : .leftToRight)
                 .preferredColorScheme(preferredScheme)

@@ -1,85 +1,61 @@
 import SwiftUI
 
 enum MapNavigationTab: String, CaseIterable, Identifiable {
-    case home
+    case location
     case categories
     case settings
-    case saved
 
     var id: String { rawValue }
 
     var title: LocalizedStringKey {
         switch self {
-        case .home: "navigation.home"
+        case .location: "location.my_location"
         case .categories: "navigation.categories"
         case .settings: "navigation.settings"
-        case .saved: "navigation.saved"
         }
     }
 
     var icon: String {
         switch self {
-        case .home: "house.fill"
-        case .categories: "square.grid.2x2.fill"
-        case .settings: "gearshape.fill"
-        case .saved: "bookmark.fill"
+        case .location: "IconlyLocation"
+        case .categories: "IconlyCategory"
+        case .settings: "IconlySetting"
         }
     }
 }
 
 struct FloatingGlassNavigationBar: View {
     @Binding var selection: MapNavigationTab
+    var glassIntensity: Double = 1
     var onSelect: (MapNavigationTab) -> Void
 
     @Environment(\.colorScheme) private var colorScheme
     @Namespace private var selectionAnimation
 
-    private var selectedColor: Color { .black }
-    private var unselectedColor: Color { .gray }
+    private var normalizedGlassIntensity: Double {
+        min(max(glassIntensity, 0), 1)
+    }
+
+    private var selectedColor: Color {
+        colorScheme == .dark ? .white : Color(red: 0.08, green: 0.08, blue: 0.10)
+    }
+
+    private var unselectedColor: Color {
+        colorScheme == .dark ? .white.opacity(0.68) : Color.black.opacity(0.56)
+    }
+
+    private var opaqueSurfaceColor: Color {
+        colorScheme == .dark ? .black : .white
+    }
 
     var body: some View {
-        HStack(spacing: 2) {
+        HStack(spacing: 8) {
             ForEach(MapNavigationTab.allCases) { tab in
                 tabButton(for: tab)
             }
         }
-        .padding(.horizontal, 9)
-        .padding(.vertical, 8)
-        .background {
-            Capsule()
-                .fill(.ultraThinMaterial)
-                .overlay {
-                    Capsule()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(colorScheme == .dark ? 0.14 : 0.52),
-                                    Color.white.opacity(colorScheme == .dark ? 0.03 : 0.10),
-                                    Color.clear
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .allowsHitTesting(false)
-                }
-                .overlay {
-                    Capsule()
-                        .strokeBorder(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(colorScheme == .dark ? 0.38 : 0.90),
-                                    Color.white.opacity(colorScheme == .dark ? 0.12 : 0.42)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 1
-                        )
-                }
-                .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.30 : 0.12), radius: 20, x: 0, y: 9)
-                .shadow(color: Color.white.opacity(colorScheme == .dark ? 0.04 : 0.58), radius: 1, x: 0, y: 1)
-        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
         .accessibilityElement(children: .contain)
     }
 
@@ -88,43 +64,33 @@ struct FloatingGlassNavigationBar: View {
         let foreground = isSelected ? selectedColor : unselectedColor
 
         return Button {
-            withAnimation(.spring(response: 0.32, dampingFraction: 0.78)) {
+            withAnimation(.spring(response: 0.46, dampingFraction: 0.72, blendDuration: 0.12)) {
                 selection = tab
             }
             onSelect(tab)
         } label: {
-            VStack(spacing: 5) {
-                Image(systemName: tab.icon)
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(foreground)
-                    .frame(width: 48, height: 38)
-                    .background {
-                        if isSelected {
-                            Capsule()
-                                .fill(.ultraThinMaterial)
-                                .overlay {
-                                    Capsule()
-                                        .fill(
-                                            LinearGradient(
-                                                colors: [
-                                                    Color.white.opacity(colorScheme == .dark ? 0.26 : 0.76),
-                                                    Color.white.opacity(colorScheme == .dark ? 0.08 : 0.30)
-                                                ],
-                                                startPoint: .topLeading,
-                                                endPoint: .bottomTrailing
-                                            )
-                                        )
-                                }
-                                .overlay {
-                                    Capsule()
-                                        .strokeBorder(
-                                            Color.white.opacity(colorScheme == .dark ? 0.30 : 0.76),
-                                            lineWidth: 1
-                                        )
-                                }
-                                .matchedGeometryEffect(id: "selected-tab-glass", in: selectionAnimation)
-                        }
+            VStack(spacing: 6) {
+                ZStack {
+                    Circle()
+                        .fill(opaqueSurfaceColor.opacity(1 - normalizedGlassIntensity))
+
+                    glassLayer
+
+                    if isSelected {
+                        selectedHighlightCircle
+                            .matchedGeometryEffect(id: "selected-tab-glass", in: selectionAnimation)
                     }
+
+                    Image(tab.icon)
+                        .renderingMode(.template)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 18, height: 18)
+                        .foregroundStyle(foreground)
+                        .symbolEffect(.bounce, value: isSelected)
+                        .contentTransition(.symbolEffect(.replace))
+                }
+                .frame(width: 58, height: 58)
 
                 Text(tab.title)
                     .font(.system(size: 10.5, weight: isSelected ? .semibold : .regular, design: .rounded))
@@ -139,5 +105,26 @@ struct FloatingGlassNavigationBar: View {
         .buttonStyle(.plain)
         .accessibilityLabel(Text(tab.title))
         .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    @ViewBuilder
+    private var glassLayer: some View {
+        if normalizedGlassIntensity > 0 {
+            if #available(iOS 26.0, *) {
+                Circle()
+                    .fill(.clear)
+                    .glassEffect(.regular.interactive(), in: Circle())
+                    .opacity(normalizedGlassIntensity)
+            } else {
+                Circle()
+                    .fill(.ultraThinMaterial)
+                    .opacity(normalizedGlassIntensity)
+            }
+        }
+    }
+
+    private var selectedHighlightCircle: some View {
+        Circle()
+            .fill(colorScheme == .dark ? Color.white.opacity(0.09) : Color.black.opacity(0.045))
     }
 }
