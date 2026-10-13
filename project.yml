@@ -55,6 +55,8 @@ targets:
         CODE_SIGN_ENTITLEMENTS: Support/OttuWidget.entitlements
         PRODUCT_BUNDLE_IDENTIFIER: iq.ottu.ios.widget
         PRODUCT_NAME: OttuWidget
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
         SWIFT_VERSION: "5.0"
         IPHONEOS_DEPLOYMENT_TARGET: "17.0"
         TARGETED_DEVICE_FAMILY: "1,2"
