@@ -258,7 +258,16 @@ struct MapHomeView: View {
         let usesMiles = distanceUnit == "mi"
         let distance = usesMiles ? plan.distanceKilometers * 0.621371 : plan.distanceKilometers
         let formatKey = usesMiles ? "directions.summary_format_miles" : "directions.summary_format"
-        return String(format: String(localized: formatKey, locale: locale), distance, plan.durationMinutes)
+        let language = locale.language.languageCode?.identifier ?? "ar"
+        let localizationBundle: Bundle
+        if let path = Bundle.main.path(forResource: language, ofType: "lproj"),
+           let bundle = Bundle(path: path) {
+            localizationBundle = bundle
+        } else {
+            localizationBundle = .main
+        }
+        let format = localizationBundle.localizedString(forKey: formatKey, value: nil, table: nil)
+        return String(format: format, locale: locale, arguments: [distance, plan.durationMinutes])
     }
 
     @ViewBuilder
