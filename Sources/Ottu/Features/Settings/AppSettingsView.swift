@@ -28,28 +28,28 @@ struct AppSettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Picker("settings.language", selection: $selectedLanguage) {
-                    Text("settings.language.system").tag("system")
-                    Text("settings.language.arabic").tag("ar")
-                    Text("settings.language.english").tag("en")
-                    Text("settings.language.kurdish").tag("ku")
+                Picker(selection: $selectedLanguage, label: Text(AppLocalization.string("settings.language", locale: interfaceLocale))) {
+                    Text(AppLocalization.string("settings.language.system", locale: interfaceLocale)).tag("system")
+                    Text(AppLocalization.string("settings.language.arabic", locale: interfaceLocale)).tag("ar")
+                    Text(AppLocalization.string("settings.language.english", locale: interfaceLocale)).tag("en")
+                    Text(AppLocalization.string("settings.language.kurdish", locale: interfaceLocale)).tag("ku")
                 }
 
-                Picker("settings.distance_unit", selection: $distanceUnit) {
-                    Text("settings.distance.kilometers").tag("km")
-                    Text("settings.distance.miles").tag("mi")
+                Picker(selection: $distanceUnit, label: Text(AppLocalization.string("settings.distance_unit", locale: interfaceLocale))) {
+                    Text(AppLocalization.string("settings.distance.kilometers", locale: interfaceLocale)).tag("km")
+                    Text(AppLocalization.string("settings.distance.miles", locale: interfaceLocale)).tag("mi")
                 }
 
-                Picker("settings.appearance", selection: $selectedAppearance) {
-                    Label("settings.appearance.system", systemImage: "iphone").tag("system")
-                    Label("settings.appearance.light", systemImage: "sun.max").tag("light")
-                    Label("settings.appearance.dark", systemImage: "moon").tag("dark")
+                Picker(selection: $selectedAppearance, label: Text(AppLocalization.string("settings.appearance", locale: interfaceLocale))) {
+                    Label(AppLocalization.string("settings.appearance.system", locale: interfaceLocale), systemImage: "iphone").tag("system")
+                    Label(AppLocalization.string("settings.appearance.light", locale: interfaceLocale), systemImage: "sun.max").tag("light")
+                    Label(AppLocalization.string("settings.appearance.dark", locale: interfaceLocale), systemImage: "moon").tag("dark")
                 }
 
                 Section {
                     VStack(spacing: 8) {
                         Slider(value: $liquidGlassIntensity, in: 0...1, step: 0.01)
-                            .accessibilityLabel(Text("settings.liquid_glass"))
+                            .accessibilityLabel(Text(AppLocalization.string("settings.liquid_glass", locale: interfaceLocale)))
                             .accessibilityValue(Text("\(Int((liquidGlassIntensity * 100).rounded()))%"))
 
                         HStack {
@@ -62,7 +62,7 @@ struct AppSettingsView: View {
                     }
                 } header: {
                     HStack {
-                        Text("settings.liquid_glass")
+                        Text(AppLocalization.string("settings.liquid_glass", locale: interfaceLocale))
                         Spacer()
                         Text("\(Int((liquidGlassIntensity * 100).rounded()))%")
                             .font(.caption.monospacedDigit())
@@ -80,7 +80,7 @@ struct AppSettingsView: View {
                         onRemoveCommunity: onRemoveCommunityPlace
                     )
                 } label: {
-                    Label("navigation.saved", systemImage: "bookmark.fill")
+                    Label(AppLocalization.string("navigation.saved", locale: interfaceLocale), systemImage: "bookmark.fill")
                 }
 
                 NavigationLink {
@@ -91,7 +91,7 @@ struct AppSettingsView: View {
                     )
                 } label: {
                     Label {
-                        Text("settings.manage_maps")
+                        Text(AppLocalization.string("settings.manage_maps", locale: interfaceLocale))
                     } icon: {
                         Image("IconlyLocation")
                             .renderingMode(.template)
@@ -101,10 +101,10 @@ struct AppSettingsView: View {
                     }
                 }
                 Link(destination: URL(string: "mailto:pbgpfk7ofwz729ekxamzqk@onmanus.ai")!) {
-                    Label("settings.contact_report", systemImage: "envelope")
+                    Label(AppLocalization.string("settings.contact_report", locale: interfaceLocale), systemImage: "envelope")
                 }
             }
-            .navigationTitle("settings.title")
+            .navigationTitle(Text(AppLocalization.string("settings.title", locale: interfaceLocale)))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {
@@ -114,7 +114,7 @@ struct AppSettingsView: View {
                             .resizable()
                             .scaledToFit()
                             .frame(width: 17, height: 17)
-                        Text("settings.title")
+                        Text(AppLocalization.string("settings.title", locale: interfaceLocale))
                             .font(.headline)
                     }
                     .foregroundStyle(.primary)

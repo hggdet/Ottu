@@ -132,11 +132,12 @@ struct MapHomeView: View {
         VStack(spacing: 8) {
             HStack(spacing: 10) {
                 Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                TextField("search.placeholder", text: $query)
+                TextField(AppLocalization.string("search.placeholder", locale: locale), text: $query)
                     .focused($searchFocused)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .submitLabel(.search)
+                    .onSubmit { searchFocused = false }
                     .accessibilityIdentifier("placeSearchField")
                 if isSearching {
                     ProgressView().controlSize(.small)
@@ -147,7 +148,7 @@ struct MapHomeView: View {
                     } label: {
                         Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
                     }
-                    .accessibilityLabel(Text("search.clear"))
+                    .accessibilityLabel(Text(AppLocalization.string("search.clear", locale: locale)))
                 }
             }
             .padding(.horizontal, 17)
@@ -169,12 +170,12 @@ struct MapHomeView: View {
                 if isSearching {
                     HStack(spacing: 10) {
                         ProgressView().controlSize(.small)
-                        Text("search.loading").font(.subheadline).foregroundStyle(.secondary)
+                        Text(AppLocalization.string("search.loading", locale: locale)).font(.subheadline).foregroundStyle(.secondary)
                         Spacer()
                     }
                     .padding(16)
                 } else {
-                    Text("search.no_results")
+                    Text(AppLocalization.string("search.no_results", locale: locale))
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -204,7 +205,7 @@ struct MapHomeView: View {
                             }
                             Spacer(minLength: 0)
                             if isLocal(place) {
-                                Text("community.local_badge")
+                                Text(AppLocalization.string("community.local_badge", locale: locale))
                                     .font(.caption2)
                                     .foregroundStyle(.secondary)
                             }

@@ -7,7 +7,7 @@ enum MapNavigationTab: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    var title: LocalizedStringKey {
+    var titleKey: String {
         switch self {
         case .location: "location.my_location"
         case .categories: "navigation.categories"
@@ -30,6 +30,7 @@ struct FloatingGlassNavigationBar: View {
     var onSelect: (MapNavigationTab) -> Void
 
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.locale) private var locale
     @Namespace private var selectionAnimation
 
     private var normalizedGlassIntensity: Double {
@@ -62,6 +63,7 @@ struct FloatingGlassNavigationBar: View {
     private func tabButton(for tab: MapNavigationTab) -> some View {
         let isSelected = selection == tab
         let foreground = isSelected ? selectedColor : unselectedColor
+        let title = AppLocalization.string(tab.titleKey, locale: locale)
 
         return Button {
             withAnimation(.spring(response: 0.46, dampingFraction: 0.72, blendDuration: 0.12)) {
@@ -92,7 +94,7 @@ struct FloatingGlassNavigationBar: View {
                 }
                 .frame(width: 58, height: 58)
 
-                Text(tab.title)
+                Text(title)
                     .font(.system(size: 10.5, weight: isSelected ? .semibold : .regular, design: .rounded))
                     .foregroundStyle(foreground)
                     .lineLimit(1)
@@ -103,7 +105,7 @@ struct FloatingGlassNavigationBar: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(Text(tab.title))
+        .accessibilityLabel(Text(title))
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
