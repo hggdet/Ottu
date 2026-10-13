@@ -1,0 +1,90 @@
+name: Ottu
+options:
+  bundleIdPrefix: iq.ottu
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+packages:
+  MapLibre:
+    url: https://github.com/maplibre/maplibre-gl-native-distribution
+    revision: 13e41ab3d77ff5113e7e5d4ee87803b1f81f5683
+targets:
+  Ottu:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources/Ottu
+    resources:
+      - path: Resources
+    dependencies:
+      - package: MapLibre
+        product: MapLibre
+      - target: OttuWidget
+        embed: true
+    info:
+      path: Support/Info.plist
+      properties:
+        CFBundleDisplayName: Ottu
+        CFBundleLocalizations:
+          - ar
+          - en
+          - ku
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+    settings:
+      base:
+        CODE_SIGN_ENTITLEMENTS: Support/Ottu.entitlements
+        PRODUCT_BUNDLE_IDENTIFIER: iq.ottu.ios
+        PRODUCT_NAME: Ottu
+        SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        CODE_SIGN_STYLE: Automatic
+  OttuWidget:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Sources/OttuWidget
+    settings:
+      base:
+        CODE_SIGN_ENTITLEMENTS: Support/OttuWidget.entitlements
+        PRODUCT_BUNDLE_IDENTIFIER: iq.ottu.ios.widget
+        PRODUCT_NAME: OttuWidget
+        SWIFT_VERSION: "5.0"
+        IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_NSExtension_NSExtensionPointIdentifier: com.apple.widgetkit-extension
+        APPLICATION_EXTENSION_API_ONLY: YES
+        SKIP_INSTALL: YES
+        CODE_SIGN_STYLE: Automatic
+  OttuTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests/OttuTests
+    dependencies:
+      - target: Ottu
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: iq.ottu.ios.tests
+        SWIFT_VERSION: "5.0"
+        IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+schemes:
+  Ottu:
+    build:
+      targets:
+        Ottu: all
+        OttuWidget: all
+        OttuTests: [test]
+    test:
+      config: Debug
+    run:
+      config: Debug
+    archive:
+      config: Release
