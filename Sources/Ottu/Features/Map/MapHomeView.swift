@@ -16,6 +16,7 @@ struct MapHomeView: View {
     @State private var routeUsesCurrentLocation = false
     @State private var routeTask: Task<Void, Never>?
     @State private var mapCenter = MapConfiguration.initialCenter
+    @State private var selectedControl: MapControl?
     @State private var isSearching = false
     @State private var isRouting = false
     @State private var locateWhenReady = false
@@ -230,18 +231,21 @@ struct MapHomeView: View {
                 .padding(.vertical, 7)
                 .background(.regularMaterial, in: Capsule())
             }
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    controlChip("location.my_location", symbol: "location.north.circle", tint: .blue) { centerOnMyLocation() }
-                    controlChip("saved.title", symbol: "bookmark", tint: .orange) { activeSheet = .saved }
-                    controlChip("community.add_place", symbol: "plus", tint: .cyan) { activeSheet = .addPlace(mapCenter) }
-                    controlChip("incident.report", symbol: "exclamationmark.bubble", tint: .red) { activeSheet = .report(mapCenter) }
-                    controlChip("offline.download", symbol: "arrow.down.circle", tint: .green) {
-                        offlineManager.downloadArea(around: mapCenter, styleURL: MapConfiguration.styleURL(isDark: colorScheme == .dark))
-                    }
+            HStack(spacing: 0) {
+                controlChip(.myLocation, "location.my_location", symbol: "location.north") { centerOnMyLocation() }
+                controlChip(.saved, "saved.title", symbol: "bookmark") { activeSheet = .saved }
+                controlChip(.addPlace, "community.add_place", symbol: "plus") { activeSheet = .addPlace(mapCenter) }
+                controlChip(.report, "incident.report", symbol: "exclamationmark.bubble") { activeSheet = .report(mapCenter) }
+                controlChip(.offline, "offline.download", symbol: "arrow.down.circle") {
+                    offlineManager.downloadArea(around: mapCenter, styleURL: MapConfiguration.styleURL(isDark: colorScheme == .dark))
                 }
-                .padding(.horizontal, 1)
             }
+            .padding(.horizontal, 7)
+            .padding(.vertical, 9)
+            .background(.ultraThinMaterial, in: Capsule())
+            .overlay(Capsule().strokeBorder(.white.opacity(colorScheme == .dark ? 0.14 : 0.55), lineWidth: 1))
+            .shadow(color: .black.opacity(0.11), radius: 12, y: 4)
+            .animation(.easeInOut(duration: 0.16), value: selectedControl)
         }
     }
 
@@ -278,29 +282,31 @@ struct MapHomeView: View {
         .shadow(color: .black.opacity(0.1), radius: 10, y: 3)
     }
 
-    private func controlChip(_ title: LocalizedStringKey, symbol: String, tint: Color, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+    private func controlChip(_ item: MapControl, _ title: LocalizedStringKey, symbol: String, action: @escaping () -> Void) -> some View {
+        let isSelected = selectedControl == item
+        return Button {
+            selectedControl = item
+            action()
+        } label: {
             VStack(spacing: 6) {
                 Image(systemName: symbol)
-                    .font(.system(size: 20, weight: .medium))
-                    .foregroundStyle(tint)
-                    .frame(width: 68, height: 54)
-                    .background(.regularMaterial, in: Capsule())
-                    .overlay(Capsule().strokeBorder(.white.opacity(0.55), lineWidth: 1))
-                    .shadow(color: .black.opacity(0.07), radius: 7, y: 3)
+                    .font(.system(size: 22, weight: .regular))
+                    .foregroundStyle(isSelected ? Color.primary : Color.secondary)
+                    .frame(height: 25)
                 Text(title)
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: 11, weight: isSelected ? .medium : .regular))
+                    .foregroundStyle(isSelected ? Color.primary : Color.secondary)
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
-                    .minimumScaleFactor(0.8)
-                    .frame(maxWidth: .infinity, minHeight: 30)
+                    .minimumScaleFactor(0.72)
+                    .frame(maxWidth: .infinity, minHeight: 27)
             }
-            .frame(width: 74)
+            .frame(maxWidth: .infinity, minHeight: 58)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(Text(title))
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     @ViewBuilder
@@ -468,4 +474,12 @@ private enum HomeSheet: Identifiable {
         case .settings: return "settings"
         }
     }
+}
+
+private enum MapControl: Hashable {
+    case myLocation
+    case saved
+    case addPlace
+    case report
+    case offline
 }
