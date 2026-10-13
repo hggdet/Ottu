@@ -232,11 +232,11 @@ struct MapHomeView: View {
             }
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
-                    controlChip("location.my_location", symbol: "location.fill") { centerOnMyLocation() }
-                    controlChip("saved.title", symbol: "bookmark") { activeSheet = .saved }
-                    controlChip("community.add_place", symbol: "plus") { activeSheet = .addPlace(mapCenter) }
-                    controlChip("incident.report", symbol: "exclamationmark.bubble") { activeSheet = .report(mapCenter) }
-                    controlChip("offline.download", symbol: "arrow.down.circle") {
+                    controlChip("location.my_location", symbol: "location.north.circle", tint: .blue) { centerOnMyLocation() }
+                    controlChip("saved.title", symbol: "bookmark", tint: .orange) { activeSheet = .saved }
+                    controlChip("community.add_place", symbol: "plus", tint: .cyan) { activeSheet = .addPlace(mapCenter) }
+                    controlChip("incident.report", symbol: "exclamationmark.bubble", tint: .red) { activeSheet = .report(mapCenter) }
+                    controlChip("offline.download", symbol: "arrow.down.circle", tint: .green) {
                         offlineManager.downloadArea(around: mapCenter, styleURL: MapConfiguration.styleURL(isDark: colorScheme == .dark))
                     }
                 }
@@ -278,17 +278,29 @@ struct MapHomeView: View {
         .shadow(color: .black.opacity(0.1), radius: 10, y: 3)
     }
 
-    private func controlChip(_ title: LocalizedStringKey, symbol: String, action: @escaping () -> Void) -> some View {
+    private func controlChip(_ title: LocalizedStringKey, symbol: String, tint: Color, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Label(title, systemImage: symbol)
-                .font(.caption.weight(.medium))
-                .padding(.horizontal, 12)
-                .frame(height: 39)
-                .background(.regularMaterial, in: Capsule())
-                .overlay(Capsule().strokeBorder(.white.opacity(0.2), lineWidth: 1))
+            VStack(spacing: 6) {
+                Image(systemName: symbol)
+                    .font(.system(size: 20, weight: .medium))
+                    .foregroundStyle(tint)
+                    .frame(width: 68, height: 54)
+                    .background(.regularMaterial, in: Capsule())
+                    .overlay(Capsule().strokeBorder(.white.opacity(0.55), lineWidth: 1))
+                    .shadow(color: .black.opacity(0.07), radius: 7, y: 3)
+                Text(title)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.8)
+                    .frame(maxWidth: .infinity, minHeight: 30)
+            }
+            .frame(width: 74)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .shadow(color: .black.opacity(0.08), radius: 6, y: 2)
+        .accessibilityLabel(Text(title))
     }
 
     @ViewBuilder

@@ -47,7 +47,7 @@ struct SavedPlacesWidgetView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Image(systemName: "location.north.circle.fill").foregroundStyle(.blue)
-                Text("Ottu").font(.headline)
+                Text("وين").font(.headline)
                 Spacer()
                 Text("المحفوظة").font(.caption).foregroundStyle(.secondary)
             }
@@ -89,7 +89,7 @@ struct OttuSavedPlacesWidget: Widget {
         StaticConfiguration(kind: kind, provider: SavedPlacesProvider()) { entry in
             SavedPlacesWidgetView(entry: entry)
         }
-        .configurationDisplayName("أماكن Ottu المحفوظة")
+        .configurationDisplayName("أماكن وين المحفوظة")
         .description("اختصارات سريعة إلى أماكنك المفضلة.")
         .supportedFamilies([.systemSmall, .systemMedium])
     }

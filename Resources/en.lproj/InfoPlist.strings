@@ -1,1 +1,2 @@
-"NSLocationWhenInUseUsageDescription" = "Ottu uses your location to show your position and calculate directions from where you are.";
+"CFBundleDisplayName" = "وين";
+"NSLocationWhenInUseUsageDescription" = "وين uses your location to show your position and calculate directions from where you are.";
