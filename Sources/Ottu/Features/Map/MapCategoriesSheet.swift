@@ -58,7 +58,7 @@ struct MapCategoriesSheet: View {
 
     private func placeCategoryButton(_ category: MapPlaceCategory) -> some View {
         Button {
-            onSelectCategory(String(localized: category.queryResource, locale: locale))
+            onSelectCategory(category.searchQuery(for: locale))
         } label: {
             VStack(spacing: 11) {
                 Image(systemName: category.symbol)
@@ -165,19 +165,6 @@ private enum MapPlaceCategory: String, CaseIterable, Identifiable {
         }
     }
 
-    var queryResource: LocalizedStringResource {
-        switch self {
-        case .restaurants: "categories.restaurants"
-        case .cafes: "categories.cafes"
-        case .markets: "categories.markets"
-        case .pharmacies: "categories.pharmacies"
-        case .hospitals: "categories.hospitals"
-        case .fuel: "categories.fuel"
-        case .parks: "categories.parks"
-        case .hotels: "categories.hotels"
-        }
-    }
-
     var symbol: String {
         switch self {
         case .restaurants: "fork.knife"
@@ -189,5 +176,29 @@ private enum MapPlaceCategory: String, CaseIterable, Identifiable {
         case .parks: "tree"
         case .hotels: "bed.double"
         }
+    }
+
+    func searchQuery(for locale: Locale) -> String {
+        let language = locale.language.languageCode?.identifier ?? "en"
+        let terms: [String: String]
+        switch self {
+        case .restaurants:
+            terms = ["ar": "مطاعم", "ku": "چێشتخانەکان", "en": "Restaurants"]
+        case .cafes:
+            terms = ["ar": "مقاهٍ", "ku": "قاوەخانەکان", "en": "Cafes"]
+        case .markets:
+            terms = ["ar": "أسواق", "ku": "بازاڕەکان", "en": "Markets"]
+        case .pharmacies:
+            terms = ["ar": "صيدليات", "ku": "دەرمانخانەکان", "en": "Pharmacies"]
+        case .hospitals:
+            terms = ["ar": "مستشفيات", "ku": "نەخۆشخانەکان", "en": "Hospitals"]
+        case .fuel:
+            terms = ["ar": "محطات وقود", "ku": "پەمپەکانی سووتەمەنی", "en": "Gas stations"]
+        case .parks:
+            terms = ["ar": "حدائق", "ku": "باخچەکان", "en": "Parks"]
+        case .hotels:
+            terms = ["ar": "فنادق", "ku": "هوتێلەکان", "en": "Hotels"]
+        }
+        return terms[language] ?? terms["en"]!
     }
 }
