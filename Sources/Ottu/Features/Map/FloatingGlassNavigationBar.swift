@@ -110,16 +110,9 @@ struct FloatingGlassNavigationBar: View {
     @ViewBuilder
     private var glassLayer: some View {
         if normalizedGlassIntensity > 0 {
-            if #available(iOS 26.0, *) {
-                Circle()
-                    .fill(.clear)
-                    .glassEffect(.regular.interactive(), in: Circle())
-                    .opacity(normalizedGlassIntensity)
-            } else {
-                Circle()
-                    .fill(.ultraThinMaterial)
-                    .opacity(normalizedGlassIntensity)
-            }
+            Circle()
+                .fill(.ultraThinMaterial)
+                .opacity(normalizedGlassIntensity)
         }
     }
 
