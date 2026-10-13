@@ -61,10 +61,16 @@ struct ReportIncidentView: View {
             .navigationTitle("incident.title")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) { Button("common.done", action: onCancel) }
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(action: onCancel) {
+                        Label("common.done", systemImage: "checkmark")
+                    }
+                }
             }
             .alert("incident.saved_title", isPresented: $showSavedMessage) {
-                Button("common.ok", role: .cancel) { }
+                Button(role: .cancel) { } label: {
+                    Label("common.ok", systemImage: "checkmark")
+                }
             } message: {
                 Text("incident.saved_message")
             }

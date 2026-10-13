@@ -32,9 +32,20 @@ final class LocalDataStore: ObservableObject {
         WidgetCenter.shared.reloadAllTimelines()
     }
 
+    func removeSavedPlace(_ place: Place) {
+        savedPlaces.removeAll { $0.id == place.id }
+        persist(savedPlaces, key: "savedPlaces.v1")
+        WidgetCenter.shared.reloadAllTimelines()
+    }
+
     func addCommunityPlace(_ place: Place) {
         guard !communityPlaces.contains(where: { $0.id == place.id }) else { return }
         communityPlaces.insert(place, at: 0)
+        persist(communityPlaces, key: "communityPlaces.v1")
+    }
+
+    func removeCommunityPlace(_ place: Place) {
+        communityPlaces.removeAll { $0.id == place.id }
         persist(communityPlaces, key: "communityPlaces.v1")
     }
 

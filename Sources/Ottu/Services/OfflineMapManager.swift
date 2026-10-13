@@ -8,6 +8,12 @@ final class OfflineMapManager: ObservableObject {
     @Published private(set) var progress: Double?
     @Published private(set) var statusKey: String?
     @Published private(set) var isDownloading = false
+    @Published private(set) var hasOfflineArea = false
+
+    var offlineAreaSize: String? {
+        guard let pack = currentAreaPack else { return nil }
+        return ByteCountFormatter.string(fromByteCount: Int64(pack.progress.countOfBytesCompleted), countStyle: .file)
+    }
 
     private var progressObserver: NSObjectProtocol?
     private var errorObserver: NSObjectProtocol?
@@ -19,6 +25,7 @@ final class OfflineMapManager: ObservableObject {
             queue: .main
         ) { [weak self] notification in
             guard let pack = notification.object as? MLNOfflinePack else { return }
+            guard String(data: pack.context, encoding: .utf8) == "ottu-current-area-v1" else { return }
             let completed = pack.progress.countOfResourcesCompleted
             let expected = pack.progress.countOfResourcesExpected
             Task { @MainActor in
@@ -33,14 +40,17 @@ final class OfflineMapManager: ObservableObject {
             forName: NSNotification.Name.MLNOfflinePackError,
             object: nil,
             queue: .main
-        ) { [weak self] _ in
+        ) { [weak self] notification in
+            guard let pack = notification.object as? MLNOfflinePack,
+                  String(data: pack.context, encoding: .utf8) == "ottu-current-area-v1" else { return }
             Task { @MainActor in
+                self?.hasOfflineArea = true
                 self?.statusKey = "offline.failed"
                 self?.isDownloading = false
             }
         }
-        if let packs = MLNOfflineStorage.shared.packs,
-           let pack = packs.first(where: { String(data: $0.context, encoding: .utf8) == "ottu-current-area-v1" }) {
+        if let pack = currentAreaPack {
+            hasOfflineArea = true
             let completed = pack.progress.countOfResourcesCompleted
             let expected = pack.progress.countOfResourcesExpected
             if expected > 0 {
@@ -87,9 +97,40 @@ final class OfflineMapManager: ObservableObject {
             }
             pack.resume()
             Task { @MainActor in
+                self?.hasOfflineArea = true
                 self?.progress = 0
                 self?.statusKey = "offline.downloading"
             }
+        }
+    }
+
+    func removeDownloadedArea() {
+        guard let pack = currentAreaPack else {
+            hasOfflineArea = false
+            progress = nil
+            isDownloading = false
+            statusKey = nil
+            return
+        }
+        statusKey = "offline.removing"
+        MLNOfflineStorage.shared.removePack(pack) { [weak self] error in
+            Task { @MainActor in
+                guard let self else { return }
+                if error == nil {
+                    self.hasOfflineArea = false
+                    self.progress = nil
+                    self.isDownloading = false
+                    self.statusKey = "offline.removed"
+                } else {
+                    self.statusKey = "offline.remove_failed"
+                }
+            }
+        }
+    }
+
+    private var currentAreaPack: MLNOfflinePack? {
+        MLNOfflineStorage.shared.packs?.first {
+            String(data: $0.context, encoding: .utf8) == "ottu-current-area-v1"
         }
     }
 }

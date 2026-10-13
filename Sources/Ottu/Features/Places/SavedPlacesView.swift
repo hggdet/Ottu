@@ -5,40 +5,64 @@ struct SavedPlacesView: View {
     let communityPlaces: [Place]
     let onSelect: (Place) -> Void
     let onDismiss: () -> Void
+    let onRemoveSaved: (Place) -> Void
+    let onRemoveCommunity: (Place) -> Void
 
     var body: some View {
         NavigationStack {
-            List {
-                Section("saved.section") {
-                    if savedPlaces.isEmpty {
-                        ContentUnavailableView("saved.empty", systemImage: "bookmark", description: Text("saved.empty_hint"))
-                    } else {
-                        ForEach(savedPlaces) { place in
-                            placeRow(place)
-                        }
-                    }
-                }
-                Section("community.section") {
-                    if communityPlaces.isEmpty {
-                        ContentUnavailableView("community.empty", systemImage: "mappin.and.ellipse", description: Text("community.empty_hint"))
-                    } else {
-                        ForEach(communityPlaces) { place in
-                            placeRow(place)
-                        }
+            SavedPlacesListView(
+                savedPlaces: savedPlaces,
+                communityPlaces: communityPlaces,
+                onSelect: onSelect,
+                onDismiss: onDismiss,
+                onRemoveSaved: onRemoveSaved,
+                onRemoveCommunity: onRemoveCommunity
+            )
+        }
+    }
+}
+
+struct SavedPlacesListView: View {
+    let savedPlaces: [Place]
+    let communityPlaces: [Place]
+    let onSelect: (Place) -> Void
+    let onDismiss: () -> Void
+    let onRemoveSaved: (Place) -> Void
+    let onRemoveCommunity: (Place) -> Void
+
+    var body: some View {
+        List {
+            Section("saved.section") {
+                if savedPlaces.isEmpty {
+                    ContentUnavailableView("saved.empty", systemImage: "bookmark", description: Text("saved.empty_hint"))
+                } else {
+                    ForEach(savedPlaces) { place in
+                        placeRow(place, onRemove: onRemoveSaved)
                     }
                 }
             }
-            .navigationTitle("saved.title")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("common.done", action: onDismiss)
+            Section("community.section") {
+                if communityPlaces.isEmpty {
+                    ContentUnavailableView("community.empty", systemImage: "mappin.and.ellipse", description: Text("community.empty_hint"))
+                } else {
+                    ForEach(communityPlaces) { place in
+                        placeRow(place, onRemove: onRemoveCommunity)
+                    }
+                }
+            }
+        }
+        .navigationTitle("saved.title")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button(action: onDismiss) {
+                    Label("common.done", systemImage: "checkmark")
                 }
             }
         }
     }
 
-    private func placeRow(_ place: Place) -> some View {
+    private func placeRow(_ place: Place, onRemove: @escaping (Place) -> Void) -> some View {
         Button { onSelect(place) } label: {
             HStack(spacing: 12) {
                 Image(systemName: "mappin.circle.fill")
@@ -56,5 +80,10 @@ struct SavedPlacesView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .swipeActions(edge: .trailing) {
+            Button(role: .destructive) { onRemove(place) } label: {
+                Label("common.delete", systemImage: "trash")
+            }
+        }
     }
 }

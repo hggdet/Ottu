@@ -2,6 +2,7 @@ import SwiftUI
 import UIKit
 
 struct PlaceDetailsSheet: View {
+    @Environment(\.locale) private var locale
     let place: Place
     let isSaved: Bool
     let onToggleSaved: () -> Void
@@ -27,7 +28,7 @@ struct PlaceDetailsSheet: View {
             }
 
             Text(String(
-                format: String(localized: "place.coordinates_format"),
+                format: String(localized: "place.coordinates_format", locale: locale),
                 place.coordinate.latitude,
                 place.coordinate.longitude
             ))

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MapHomeView: View {
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.locale) private var locale
     @StateObject private var localStore = LocalDataStore()
     @StateObject private var locationManager = UserLocationManager()
     @StateObject private var offlineManager = OfflineMapManager()
@@ -26,7 +27,7 @@ struct MapHomeView: View {
     private let routeService: any RoutingProviding = OSRMRouteService()
 
     private var currentLanguage: String {
-        Locale.current.language.languageCode?.identifier ?? "ar"
+        locale.language.languageCode?.identifier ?? "ar"
     }
 
     var body: some View {
@@ -60,7 +61,7 @@ struct MapHomeView: View {
         .onChange(of: locationManager.coordinate) { _, coordinate in
             guard locateWhenReady, let coordinate else { return }
             locateWhenReady = false
-            focusMap(on: coordinate, named: String(localized: "location.current"))
+            focusMap(on: coordinate, named: String(localized: "location.current", locale: locale))
         }
         .sheet(item: $activeSheet) { sheet in
             sheetContent(for: sheet)
@@ -71,7 +72,9 @@ struct MapHomeView: View {
             get: { activeErrorMessage != nil },
             set: { if !$0 { activeErrorMessage = nil } }
         )) {
-            Button("common.ok", role: .cancel) { activeErrorMessage = nil }
+            Button(role: .cancel) { activeErrorMessage = nil } label: {
+                Label("common.ok", systemImage: "checkmark")
+            }
         } message: {
             Text(activeErrorMessage ?? "")
         }
@@ -97,6 +100,15 @@ struct MapHomeView: View {
                     .background(.thinMaterial, in: Circle())
             }
             .accessibilityLabel(Text("saved.title"))
+            Button {
+                activeSheet = .settings
+            } label: {
+                Image(systemName: "gearshape.fill")
+                    .font(.subheadline)
+                    .frame(width: 36, height: 36)
+                    .background(.thinMaterial, in: Circle())
+            }
+            .accessibilityLabel(Text("settings.title"))
         }
         .padding(.leading, 14)
         .padding(.trailing, 7)
@@ -239,7 +251,7 @@ struct MapHomeView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(place.name).font(.subheadline.weight(.semibold)).lineLimit(1)
                 if let routePlan {
-                    Text(String(format: String(localized: "directions.summary_format"), routePlan.distanceKilometers, routePlan.durationMinutes))
+                    Text(String(format: String(localized: "directions.summary_format", locale: locale), routePlan.distanceKilometers, routePlan.durationMinutes))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 } else if isRouting {
@@ -298,7 +310,9 @@ struct MapHomeView: View {
                     focusedPlace = place
                     activeSheet = .place(place)
                 },
-                onDismiss: { activeSheet = nil }
+                onDismiss: { activeSheet = nil },
+                onRemoveSaved: { localStore.removeSavedPlace($0) },
+                onRemoveCommunity: { localStore.removeCommunityPlace($0) }
             )
         case .addPlace(let coordinate):
             AddPlaceView(
@@ -316,6 +330,20 @@ struct MapHomeView: View {
                 reports: localStore.incidentReports,
                 onSave: { localStore.addIncident($0) },
                 onCancel: { activeSheet = nil }
+            )
+        case .settings:
+            AppSettingsView(
+                savedPlaces: localStore.savedPlaces,
+                communityPlaces: localStore.communityPlaces,
+                offlineManager: offlineManager,
+                mapCenter: mapCenter,
+                isDark: colorScheme == .dark,
+                onSelectPlace: { place in
+                    focusedPlace = place
+                    activeSheet = .place(place)
+                },
+                onRemoveSavedPlace: { localStore.removeSavedPlace($0) },
+                onRemoveCommunityPlace: { localStore.removeCommunityPlace($0) }
             )
         }
     }
@@ -355,7 +383,7 @@ struct MapHomeView: View {
             results = Array(localMatches.prefix(8))
             if localMatches.isEmpty {
                 activeErrorTitle = "search.error_title"
-                activeErrorMessage = String(localized: "search.error_message")
+                activeErrorMessage = String(localized: "search.error_message", locale: locale)
             }
         }
     }
@@ -366,7 +394,7 @@ struct MapHomeView: View {
 
     private func centerOnMyLocation() {
         if let coordinate = locationManager.coordinate {
-            focusMap(on: coordinate, named: String(localized: "location.current"))
+            focusMap(on: coordinate, named: String(localized: "location.current", locale: locale))
         } else {
             locateWhenReady = true
             locationManager.requestLocation()
@@ -406,7 +434,7 @@ struct MapHomeView: View {
                 guard !Task.isCancelled else { return }
                 routeTarget = nil
                 activeErrorTitle = "directions.error_title"
-                activeErrorMessage = String(localized: "directions.error_message")
+                activeErrorMessage = String(localized: "directions.error_message", locale: locale)
             }
         }
     }
@@ -417,6 +445,7 @@ private enum HomeSheet: Identifiable {
     case saved
     case addPlace(GeoCoordinate)
     case report(GeoCoordinate)
+    case settings
 
     var id: String {
         switch self {
@@ -424,6 +453,7 @@ private enum HomeSheet: Identifiable {
         case .saved: return "saved"
         case .addPlace(let coordinate): return "add-\(coordinate.latitude)-\(coordinate.longitude)"
         case .report(let coordinate): return "report-\(coordinate.latitude)-\(coordinate.longitude)"
+        case .settings: return "settings"
         }
     }
 }

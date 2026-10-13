@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct AddPlaceView: View {
+    @Environment(\.locale) private var locale
     let coordinate: GeoCoordinate
     let onSave: (Place) -> Void
     let onCancel: () -> Void
@@ -36,18 +37,24 @@ struct AddPlaceView: View {
             .navigationTitle("community.add_place")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) { Button("common.cancel", action: onCancel) }
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(action: onCancel) {
+                        Label("common.cancel", systemImage: "xmark")
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("common.save") {
+                    Button {
                         let place = Place(
                             id: "local-\(UUID().uuidString)",
                             name: name.trimmingCharacters(in: .whitespacesAndNewlines),
                             street: street.nilIfBlank,
                             city: city.nilIfBlank,
-                            country: "العراق",
+                            country: String(localized: "country.iraq", locale: locale),
                             coordinate: coordinate
                         )
                         onSave(place)
+                    } label: {
+                        Label("common.save", systemImage: "checkmark")
                     }
                     .disabled(!canSave)
                 }
