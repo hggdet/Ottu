@@ -16,7 +16,7 @@ struct MapHomeView: View {
     @State private var routeUsesCurrentLocation = false
     @State private var routeTask: Task<Void, Never>?
     @State private var mapCenter = MapConfiguration.initialCenter
-    @State private var selectedControl: MapControl?
+    @State private var selectedTab: MapNavigationTab = .home
     @State private var isSearching = false
     @State private var isRouting = false
     @State private var locateWhenReady = false
@@ -51,14 +51,36 @@ struct MapHomeView: View {
                 if let routeTarget {
                     routeSummary(for: routeTarget)
                 }
+                if let statusKey = offlineManager.statusKey {
+                    HStack(spacing: 7) {
+                        if offlineManager.progress.map({ $0 < 1 }) == true { ProgressView().controlSize(.mini) }
+                        Text(LocalizedStringKey(statusKey))
+                        if let progress = offlineManager.progress {
+                            Text("\(Int(progress * 100))%")
+                                .font(.caption.monospacedDigit().weight(.semibold))
+                        }
+                    }
+                    .font(.caption)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
+                    .background(.regularMaterial, in: Capsule())
+                }
                 searchPanel
-                controlsPanel
             }
             .padding(.horizontal, 14)
             .padding(.top, 8)
             .padding(.bottom, 8)
         }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            FloatingGlassNavigationBar(selection: $selectedTab, onSelect: selectNavigationTab)
+                .padding(.horizontal, 24)
+                .padding(.top, 10)
+                .padding(.bottom, 8)
+        }
         .task(id: query) { await searchPlaces(for: query) }
+        .onChange(of: searchFocused) { _, isFocused in
+            if isFocused { selectedTab = .search }
+        }
         .onChange(of: locationManager.coordinate) { _, coordinate in
             guard locateWhenReady, let coordinate else { return }
             locateWhenReady = false
@@ -215,40 +237,6 @@ struct MapHomeView: View {
         .frame(maxHeight: 280)
     }
 
-    private var controlsPanel: some View {
-        VStack(spacing: 7) {
-            if let statusKey = offlineManager.statusKey {
-                HStack(spacing: 7) {
-                    if offlineManager.progress.map({ $0 < 1 }) == true { ProgressView().controlSize(.mini) }
-                    Text(LocalizedStringKey(statusKey))
-                    if let progress = offlineManager.progress {
-                        Text("\(Int(progress * 100))%")
-                            .font(.caption.monospacedDigit().weight(.semibold))
-                    }
-                }
-                .font(.caption)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 7)
-                .background(.regularMaterial, in: Capsule())
-            }
-            HStack(spacing: 0) {
-                controlChip(.myLocation, "location.my_location", symbol: "location.north") { centerOnMyLocation() }
-                controlChip(.saved, "saved.title", symbol: "bookmark") { activeSheet = .saved }
-                controlChip(.addPlace, "community.add_place", symbol: "plus") { activeSheet = .addPlace(mapCenter) }
-                controlChip(.report, "incident.report", symbol: "exclamationmark.bubble") { activeSheet = .report(mapCenter) }
-                controlChip(.offline, "offline.download", symbol: "arrow.down.circle") {
-                    offlineManager.downloadArea(around: mapCenter, styleURL: MapConfiguration.styleURL(isDark: colorScheme == .dark))
-                }
-            }
-            .padding(.horizontal, 7)
-            .padding(.vertical, 9)
-            .background(.ultraThinMaterial, in: Capsule())
-            .overlay(Capsule().strokeBorder(.white.opacity(colorScheme == .dark ? 0.14 : 0.55), lineWidth: 1))
-            .shadow(color: .black.opacity(0.11), radius: 12, y: 4)
-            .animation(.easeInOut(duration: 0.16), value: selectedControl)
-        }
-    }
-
     private func routeSummary(for place: Place) -> some View {
         HStack(spacing: 10) {
             Image(systemName: "car.fill").foregroundStyle(.tint)
@@ -280,33 +268,6 @@ struct MapHomeView: View {
         .padding(.vertical, 10)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         .shadow(color: .black.opacity(0.1), radius: 10, y: 3)
-    }
-
-    private func controlChip(_ item: MapControl, _ title: LocalizedStringKey, symbol: String, action: @escaping () -> Void) -> some View {
-        let isSelected = selectedControl == item
-        return Button {
-            selectedControl = item
-            action()
-        } label: {
-            VStack(spacing: 6) {
-                Image(systemName: symbol)
-                    .font(.system(size: 22, weight: .regular))
-                    .foregroundStyle(isSelected ? Color.primary : Color.secondary)
-                    .frame(height: 25)
-                Text(title)
-                    .font(.system(size: 11, weight: isSelected ? .medium : .regular))
-                    .foregroundStyle(isSelected ? Color.primary : Color.secondary)
-                    .multilineTextAlignment(.center)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.72)
-                    .frame(maxWidth: .infinity, minHeight: 27)
-            }
-            .frame(maxWidth: .infinity, minHeight: 58)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(Text(title))
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     @ViewBuilder
@@ -363,6 +324,50 @@ struct MapHomeView: View {
                 onRemoveSavedPlace: { localStore.removeSavedPlace($0) },
                 onRemoveCommunityPlace: { localStore.removeCommunityPlace($0) }
             )
+        case .categories:
+            MapCategoriesSheet(
+                locale: locale,
+                onSelectCategory: { category in
+                    query = category
+                    searchFocused = false
+                    selectedTab = .categories
+                    activeSheet = nil
+                },
+                onSelectAction: { action in
+                    switch action {
+                    case .location:
+                        activeSheet = nil
+                        centerOnMyLocation()
+                    case .saved:
+                        activeSheet = .saved
+                    case .addPlace:
+                        activeSheet = .addPlace(mapCenter)
+                    case .report:
+                        activeSheet = .report(mapCenter)
+                    case .offline:
+                        activeSheet = nil
+                        offlineManager.downloadArea(
+                            around: mapCenter,
+                            styleURL: MapConfiguration.styleURL(isDark: colorScheme == .dark)
+                        )
+                    }
+                },
+                onDismiss: { activeSheet = nil }
+            )
+        }
+    }
+
+    private func selectNavigationTab(_ tab: MapNavigationTab) {
+        switch tab {
+        case .home:
+            searchFocused = false
+            activeSheet = nil
+        case .search:
+            activeSheet = nil
+            searchFocused = true
+        case .categories:
+            searchFocused = false
+            activeSheet = .categories
         }
     }
 
@@ -464,6 +469,7 @@ private enum HomeSheet: Identifiable {
     case addPlace(GeoCoordinate)
     case report(GeoCoordinate)
     case settings
+    case categories
 
     var id: String {
         switch self {
@@ -472,14 +478,7 @@ private enum HomeSheet: Identifiable {
         case .addPlace(let coordinate): return "add-\(coordinate.latitude)-\(coordinate.longitude)"
         case .report(let coordinate): return "report-\(coordinate.latitude)-\(coordinate.longitude)"
         case .settings: return "settings"
+        case .categories: return "categories"
         }
     }
-}
-
-private enum MapControl: Hashable {
-    case myLocation
-    case saved
-    case addPlace
-    case report
-    case offline
 }
