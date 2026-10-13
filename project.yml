@@ -24,11 +24,14 @@ targets:
     info:
       path: Support/Info.plist
       properties:
+        CFBundleShortVersionString: "0.1.0"
+        CFBundleVersion: "1"
         CFBundleDisplayName: Ottu
         CFBundleLocalizations:
           - ar
           - en
           - ku
+        NSLocationWhenInUseUsageDescription: يستخدم Ottu موقعك لعرض مكانك الحالي وإنشاء اتجاهات تبدأ من موقعك.
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
@@ -67,6 +70,8 @@ targets:
     info:
       path: Support/OttuWidget-Info.plist
       properties:
+        CFBundleShortVersionString: "0.1.0"
+        CFBundleVersion: "1"
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
   OttuTests:
