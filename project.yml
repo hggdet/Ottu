@@ -63,6 +63,7 @@ targets:
         SKIP_INSTALL: YES
         CODE_SIGN_STYLE: Automatic
     info:
+      path: Support/OttuWidget-Info.plist
       properties:
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
