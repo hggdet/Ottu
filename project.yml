@@ -84,6 +84,8 @@ schemes:
         OttuTests: [test]
     test:
       config: Debug
+      targets:
+        - OttuTests
     run:
       config: Debug
     archive:
