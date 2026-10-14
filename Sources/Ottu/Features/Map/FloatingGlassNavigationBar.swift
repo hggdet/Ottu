@@ -3,8 +3,8 @@ import SwiftUI
 enum MapNavigationTab: String, CaseIterable, Identifiable {
     case location
     case categories
-    case settings
     case assistant
+    case settings
 
     var id: String { rawValue }
 
@@ -19,10 +19,10 @@ enum MapNavigationTab: String, CaseIterable, Identifiable {
 
     var icon: String {
         switch self {
-        case .location: "IconlyLocation"
-        case .categories: "IconlyCategory"
-        case .settings: "IconlySetting"
-        case .assistant: "sparkles"
+        case .location: "CurvedLocation"
+        case .categories: "CurvedCategories"
+        case .settings: "CurvedSettings"
+        case .assistant: "CurvedAssistant"
         }
     }
 }
@@ -40,7 +40,11 @@ struct FloatingGlassNavigationBar: View {
         min(max(glassIntensity, 0), 1)
     }
 
-    private var selectedColor: Color {
+    private var selectedIconColor: Color {
+        .green
+    }
+
+    private var selectedTextColor: Color {
         .black
     }
 
@@ -54,8 +58,6 @@ struct FloatingGlassNavigationBar: View {
 
     var body: some View {
         adaptiveNavigationBar
-            .padding(.horizontal, 8)
-            .padding(.vertical, 5)
             .accessibilityElement(children: .contain)
     }
 
@@ -63,105 +65,119 @@ struct FloatingGlassNavigationBar: View {
     private var adaptiveNavigationBar: some View {
 #if compiler(>=6.2)
         if #available(iOS 26.0, *) {
-            GlassEffectContainer(spacing: 10) {
-                navigationButtons(useNativeGlass: true)
-            }
+            navigationBar(useNativeGlass: true)
         } else {
-            navigationButtons(useNativeGlass: false)
+            navigationBar(useNativeGlass: false)
         }
 #else
-        navigationButtons(useNativeGlass: false)
+        navigationBar(useNativeGlass: false)
 #endif
     }
 
-    private func navigationButtons(useNativeGlass: Bool) -> some View {
-        HStack(spacing: 8) {
+    private func navigationBar(useNativeGlass: Bool) -> some View {
+        HStack(spacing: 2) {
             ForEach(MapNavigationTab.allCases) { tab in
-                tabButton(for: tab, useNativeGlass: useNativeGlass)
+                tabButton(for: tab)
             }
         }
+        .padding(5)
+        .background {
+            capsuleSurface(useNativeGlass: useNativeGlass)
+        }
+        .overlay {
+            Capsule()
+                .strokeBorder(
+                    Color.white.opacity(colorScheme == .dark ? 0.22 : 0.64),
+                    lineWidth: 1
+                )
+                .allowsHitTesting(false)
+        }
+        .clipShape(Capsule())
+        .shadow(
+            color: Color.black.opacity(colorScheme == .dark ? 0.28 : 0.12),
+            radius: 9,
+            x: 0,
+            y: 3
+        )
     }
 
-    private func tabButton(for tab: MapNavigationTab, useNativeGlass: Bool) -> some View {
+    private func tabButton(for tab: MapNavigationTab) -> some View {
         let isSelected = selection == tab
-        let foreground = isSelected ? selectedColor : unselectedColor
+        let foreground = isSelected ? selectedTextColor : unselectedColor
         let title = AppLocalization.string(tab.titleKey, locale: locale)
 
         return Button {
-            withAnimation(.spring(response: 0.46, dampingFraction: 0.72, blendDuration: 0.12)) {
+            withAnimation(.spring(response: 0.48, dampingFraction: 0.82, blendDuration: 0.1)) {
                 selection = tab
             }
             onSelect(tab)
         } label: {
-            VStack(spacing: 6) {
-                ZStack {
-                    Circle()
-                        .fill(opaqueSurfaceColor.opacity(1 - normalizedGlassIntensity))
-
-                    glassLayer(useNativeGlass: useNativeGlass)
-
-                    if isSelected {
-                        selectedHighlightCircle
-                            .matchedGeometryEffect(id: "selected-tab-glass", in: selectionAnimation)
-                    }
-
-                    if tab == .assistant {
-                        Image(systemName: tab.icon)
-                            .font(.system(size: 18, weight: .regular))
-                            .frame(width: 18, height: 18)
-                            .foregroundStyle(foreground)
-                            .symbolEffect(.bounce, value: isSelected)
-                            .contentTransition(.symbolEffect(.replace))
-                            .scaleEffect(isSelected ? 1.04 : 1)
-                    } else {
-                        Image(tab.icon)
-                            .renderingMode(.template)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 18, height: 18)
-                            .foregroundStyle(foreground)
-                            .symbolEffect(.bounce, value: isSelected)
-                            .contentTransition(.symbolEffect(.replace))
-                            .scaleEffect(isSelected ? 1.04 : 1)
-                    }
-                }
-                .frame(width: 50, height: 50)
+            VStack(spacing: 4) {
+                tabIcon(for: tab)
+                    .frame(width: 20, height: 20)
 
                 Text(title)
                     .font(.system(size: 10.5, weight: isSelected ? .semibold : .regular, design: .rounded))
                     .foregroundStyle(foreground)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.75)
+                    .minimumScaleFactor(0.72)
                     .frame(maxWidth: .infinity)
             }
             .frame(maxWidth: .infinity)
-            .contentShape(Rectangle())
+            .frame(height: 58)
+            .contentShape(Capsule())
+            .background {
+                if isSelected {
+                    Capsule()
+                        .fill(selectionHighlightColor)
+                        .matchedGeometryEffect(id: "selected-tab-capsule", in: selectionAnimation)
+                }
+            }
         }
         .buttonStyle(.plain)
+        .frame(maxWidth: .infinity)
         .accessibilityLabel(Text(title))
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
+    private func tabIcon(for tab: MapNavigationTab) -> some View {
+        Image(tab.icon)
+            .renderingMode(.template)
+            .resizable()
+            .scaledToFit()
+            .foregroundStyle(selection == tab ? selectedIconColor : unselectedColor)
+    }
+
     @ViewBuilder
-    private func glassLayer(useNativeGlass: Bool) -> some View {
-        if normalizedGlassIntensity > 0 {
+    private func capsuleSurface(useNativeGlass: Bool) -> some View {
+        ZStack {
+            Capsule()
+                .fill(opaqueSurfaceColor.opacity(1 - normalizedGlassIntensity))
+
+            if normalizedGlassIntensity > 0 {
 #if compiler(>=6.2)
-            if #available(iOS 26.0, *), useNativeGlass {
-                Circle()
-                    .fill(.clear)
-                    .glassEffect(.regular.interactive(), in: Circle())
-                    .opacity(normalizedGlassIntensity)
-            } else {
-                fallbackGlassSurface
-            }
+                if #available(iOS 26.0, *), useNativeGlass {
+                    Capsule()
+                        .fill(.clear)
+                        .glassEffect(.regular, in: Capsule())
+                        .opacity(normalizedGlassIntensity)
+                } else {
+                    fallbackGlassSurface
+                }
 #else
-            fallbackGlassSurface
+                fallbackGlassSurface
 #endif
+            }
         }
     }
 
     private var fallbackGlassSurface: some View {
-        decoratedGlassSurface(Circle().fill(.ultraThinMaterial))
+        Capsule()
+            .fill(.ultraThinMaterial)
+            .overlay {
+                Capsule().fill(glassHighlight)
+            }
+            .opacity(normalizedGlassIntensity)
     }
 
     private var glassHighlight: LinearGradient {
@@ -176,29 +192,7 @@ struct FloatingGlassNavigationBar: View {
         )
     }
 
-    private func decoratedGlassSurface<Surface: View>(_ surface: Surface) -> some View {
-        surface
-            .overlay {
-                Circle().fill(glassHighlight)
-            }
-            .overlay {
-                Circle()
-                    .strokeBorder(
-                        Color.white.opacity(colorScheme == .dark ? 0.38 : 0.74),
-                        lineWidth: 1
-                    )
-            }
-            .shadow(
-                color: Color.black.opacity(colorScheme == .dark ? 0.28 : 0.14),
-                radius: 7,
-                x: 0,
-                y: 3
-            )
-            .opacity(normalizedGlassIntensity)
-    }
-
-    private var selectedHighlightCircle: some View {
-        Circle()
-            .fill(colorScheme == .dark ? Color.white.opacity(0.09) : Color.black.opacity(0.045))
+    private var selectionHighlightColor: Color {
+        colorScheme == .dark ? .white.opacity(0.62) : .black.opacity(0.055)
     }
 }
