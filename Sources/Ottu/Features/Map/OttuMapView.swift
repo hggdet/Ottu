@@ -304,7 +304,7 @@ struct OttuMapView: UIViewRepresentable {
                         backgroundLayer.backgroundColor = NSExpression(forConstantValue: background)
                     }
                     guard let symbolLayer = layer as? MLNSymbolStyleLayer,
-                          symbolLayer.textField != nil else { continue }
+                          symbolLayer.text != nil else { continue }
                     symbolLayer.textColor = NSExpression(forConstantValue: label)
                     symbolLayer.textHaloColor = NSExpression(forConstantValue: background)
                     symbolLayer.textHaloWidth = NSExpression(forConstantValue: 1.15)
