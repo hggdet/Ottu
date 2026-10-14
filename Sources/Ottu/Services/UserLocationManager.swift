@@ -16,6 +16,11 @@ final class UserLocationManager: NSObject, ObservableObject, CLLocationManagerDe
         manager.desiredAccuracy = kCLLocationAccuracyBest
     }
 
+    func requestAuthorization() {
+        guard manager.authorizationStatus == .notDetermined else { return }
+        manager.requestWhenInUseAuthorization()
+    }
+
     func requestLocation() {
         switch manager.authorizationStatus {
         case .notDetermined:

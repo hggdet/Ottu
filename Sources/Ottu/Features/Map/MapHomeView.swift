@@ -3,6 +3,7 @@ import SwiftUI
 struct MapHomeView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.locale) private var locale
+    @Binding var selectedLanguage: String
     @StateObject private var localStore = LocalDataStore()
     @StateObject private var locationManager = UserLocationManager()
     @StateObject private var offlineManager = OfflineMapManager()
@@ -10,13 +11,16 @@ struct MapHomeView: View {
     @State private var query = ""
     @State private var results: [Place] = []
     @State private var activeSheet: HomeSheet?
+    @State private var isSettingsPresented = false
+    @State private var placeToShowAfterSettings: Place?
     @State private var focusedPlace: Place?
     @State private var routePlan: RoutePlan?
     @State private var routeTarget: Place?
-    @State private var routeUsesCurrentLocation = false
     @State private var routeTask: Task<Void, Never>?
     @State private var mapCenter = MapConfiguration.initialCenter
-    @State private var selectedTab: MapNavigationTab = .home
+    @State private var selectedTab: MapNavigationTab = .location
+    @AppStorage("ottu.liquidGlassIntensity") private var liquidGlassIntensity = 1.0
+    @AppStorage("ottu.distanceUnit") private var distanceUnit = "km"
     @State private var isSearching = false
     @State private var isRouting = false
     @State private var locateWhenReady = false
@@ -46,7 +50,7 @@ struct MapHomeView: View {
             .ignoresSafeArea()
 
             VStack(spacing: 10) {
-                header
+                searchPanel
                 Spacer(minLength: 0)
                 if let routeTarget {
                     routeSummary(for: routeTarget)
@@ -65,22 +69,22 @@ struct MapHomeView: View {
                     .padding(.vertical, 7)
                     .background(.regularMaterial, in: Capsule())
                 }
-                searchPanel
             }
             .padding(.horizontal, 14)
             .padding(.top, 8)
             .padding(.bottom, 8)
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            FloatingGlassNavigationBar(selection: $selectedTab, onSelect: selectNavigationTab)
+            FloatingGlassNavigationBar(
+                selection: $selectedTab,
+                glassIntensity: liquidGlassIntensity,
+                onSelect: selectNavigationTab
+            )
                 .padding(.horizontal, 24)
                 .padding(.top, 10)
                 .padding(.bottom, 8)
         }
         .task(id: query) { await searchPlaces(for: query) }
-        .onChange(of: searchFocused) { _, isFocused in
-            if isFocused { selectedTab = .search }
-        }
         .onChange(of: locationManager.coordinate) { _, coordinate in
             guard locateWhenReady, let coordinate else { return }
             locateWhenReady = false
@@ -90,6 +94,29 @@ struct MapHomeView: View {
             sheetContent(for: sheet)
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
+        }
+        .fullScreenCover(isPresented: $isSettingsPresented, onDismiss: {
+            if selectedTab == .settings { selectedTab = .location }
+            if let place = placeToShowAfterSettings {
+                placeToShowAfterSettings = nil
+                activeSheet = .place(place)
+            }
+        }) {
+            AppSettingsView(
+                selectedLanguage: $selectedLanguage,
+                savedPlaces: localStore.savedPlaces,
+                communityPlaces: localStore.communityPlaces,
+                offlineManager: offlineManager,
+                mapCenter: mapCenter,
+                isDark: colorScheme == .dark,
+                onSelectPlace: { place in
+                    focusedPlace = place
+                    placeToShowAfterSettings = place
+                    isSettingsPresented = false
+                },
+                onRemoveSavedPlace: { localStore.removeSavedPlace($0) },
+                onRemoveCommunityPlace: { localStore.removeCommunityPlace($0) }
+            )
         }
         .alert(activeErrorTitle, isPresented: Binding(
             get: { activeErrorMessage != nil },
@@ -103,57 +130,16 @@ struct MapHomeView: View {
         }
     }
 
-    private var header: some View {
-        HStack(spacing: 9) {
-            Image(systemName: "location.north.circle.fill")
-                .font(.title2)
-                .foregroundStyle(.tint)
-            Text("app.name")
-                .font(.headline.weight(.semibold))
-            Spacer(minLength: 0)
-            Text("map.city")
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(.secondary)
-            Button {
-                activeSheet = .saved
-            } label: {
-                Image(systemName: "bookmark.fill")
-                    .font(.subheadline)
-                    .frame(width: 36, height: 36)
-                    .background(.thinMaterial, in: Circle())
-            }
-            .accessibilityLabel(Text("saved.title"))
-            Button {
-                activeSheet = .settings
-            } label: {
-                Image(systemName: "gearshape.fill")
-                    .font(.subheadline)
-                    .frame(width: 36, height: 36)
-                    .background(.thinMaterial, in: Circle())
-            }
-            .accessibilityLabel(Text("settings.title"))
-        }
-        .padding(.leading, 14)
-        .padding(.trailing, 7)
-        .frame(height: 50)
-        .background(.ultraThinMaterial, in: Capsule())
-        .overlay(Capsule().strokeBorder(.white.opacity(0.25), lineWidth: 1))
-        .shadow(color: .black.opacity(0.1), radius: 10, y: 3)
-    }
-
     private var searchPanel: some View {
         VStack(spacing: 8) {
-            if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                resultsPanel
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-            }
             HStack(spacing: 10) {
                 Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                TextField("search.placeholder", text: $query)
+                TextField(AppLocalization.string("search.placeholder", locale: locale), text: $query)
                     .focused($searchFocused)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .submitLabel(.search)
+                    .onSubmit { searchFocused = false }
                     .accessibilityIdentifier("placeSearchField")
                 if isSearching {
                     ProgressView().controlSize(.small)
@@ -164,14 +150,17 @@ struct MapHomeView: View {
                     } label: {
                         Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
                     }
-                    .accessibilityLabel(Text("search.clear"))
+                    .accessibilityLabel(Text(AppLocalization.string("search.clear", locale: locale)))
                 }
             }
             .padding(.horizontal, 17)
             .frame(minHeight: 52)
             .background(.ultraThinMaterial, in: Capsule())
-            .overlay(Capsule().strokeBorder(.white.opacity(0.25), lineWidth: 1))
             .shadow(color: .black.opacity(0.12), radius: 12, y: 4)
+            if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                resultsPanel
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
         }
         .animation(.easeInOut(duration: 0.2), value: results.count)
     }
@@ -182,12 +171,12 @@ struct MapHomeView: View {
                 if isSearching {
                     HStack(spacing: 10) {
                         ProgressView().controlSize(.small)
-                        Text("search.loading").font(.subheadline).foregroundStyle(.secondary)
+                        Text(AppLocalization.string("search.loading", locale: locale)).font(.subheadline).foregroundStyle(.secondary)
                         Spacer()
                     }
                     .padding(16)
                 } else {
-                    Text("search.no_results")
+                    Text(AppLocalization.string("search.no_results", locale: locale))
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -217,7 +206,7 @@ struct MapHomeView: View {
                             }
                             Spacer(minLength: 0)
                             if isLocal(place) {
-                                Text("community.local_badge")
+                                Text(AppLocalization.string("community.local_badge", locale: locale))
                                     .font(.caption2)
                                     .foregroundStyle(.secondary)
                             }
@@ -243,15 +232,12 @@ struct MapHomeView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(place.name).font(.subheadline.weight(.semibold)).lineLimit(1)
                 if let routePlan {
-                    Text(String(format: String(localized: "directions.summary_format", locale: locale), routePlan.distanceKilometers, routePlan.durationMinutes))
+                    Text(routeSummaryText(for: routePlan))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 } else if isRouting {
                     Text("directions.calculating").font(.caption).foregroundStyle(.secondary)
                 }
-                Text(routeUsesCurrentLocation ? "directions.from_my_location" : "directions.from_map_center")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
             }
             Spacer()
             Button {
@@ -268,6 +254,22 @@ struct MapHomeView: View {
         .padding(.vertical, 10)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         .shadow(color: .black.opacity(0.1), radius: 10, y: 3)
+    }
+
+    private func routeSummaryText(for plan: RoutePlan) -> String {
+        let usesMiles = distanceUnit == "mi"
+        let distance = usesMiles ? plan.distanceKilometers * 0.621371 : plan.distanceKilometers
+        let formatKey = usesMiles ? "directions.summary_format_miles" : "directions.summary_format"
+        let language = locale.language.languageCode?.identifier ?? "ar"
+        let localizationBundle: Bundle
+        if let path = Bundle.main.path(forResource: language, ofType: "lproj"),
+           let bundle = Bundle(path: path) {
+            localizationBundle = bundle
+        } else {
+            localizationBundle = .main
+        }
+        let format = localizationBundle.localizedString(forKey: formatKey, value: nil, table: nil)
+        return String(format: format, locale: locale, arguments: [distance, plan.durationMinutes])
     }
 
     @ViewBuilder
@@ -310,20 +312,6 @@ struct MapHomeView: View {
                 onSave: { localStore.addIncident($0) },
                 onCancel: { activeSheet = nil }
             )
-        case .settings:
-            AppSettingsView(
-                savedPlaces: localStore.savedPlaces,
-                communityPlaces: localStore.communityPlaces,
-                offlineManager: offlineManager,
-                mapCenter: mapCenter,
-                isDark: colorScheme == .dark,
-                onSelectPlace: { place in
-                    focusedPlace = place
-                    activeSheet = .place(place)
-                },
-                onRemoveSavedPlace: { localStore.removeSavedPlace($0) },
-                onRemoveCommunityPlace: { localStore.removeCommunityPlace($0) }
-            )
         case .categories:
             MapCategoriesSheet(
                 locale: locale,
@@ -359,15 +347,17 @@ struct MapHomeView: View {
 
     private func selectNavigationTab(_ tab: MapNavigationTab) {
         switch tab {
-        case .home:
+        case .location:
             searchFocused = false
             activeSheet = nil
-        case .search:
-            activeSheet = nil
-            searchFocused = true
+            centerOnMyLocation()
         case .categories:
             searchFocused = false
             activeSheet = .categories
+        case .settings:
+            searchFocused = false
+            activeSheet = nil
+            isSettingsPresented = true
         }
     }
 
@@ -442,7 +432,6 @@ struct MapHomeView: View {
         isRouting = true
         routePlan = nil
         routeTarget = place
-        routeUsesCurrentLocation = locationManager.coordinate != nil
         let origin = locationManager.coordinate ?? mapCenter
         routeTask = Task {
             defer { isRouting = false }
@@ -468,7 +457,6 @@ private enum HomeSheet: Identifiable {
     case saved
     case addPlace(GeoCoordinate)
     case report(GeoCoordinate)
-    case settings
     case categories
 
     var id: String {
@@ -477,7 +465,6 @@ private enum HomeSheet: Identifiable {
         case .saved: return "saved"
         case .addPlace(let coordinate): return "add-\(coordinate.latitude)-\(coordinate.longitude)"
         case .report(let coordinate): return "report-\(coordinate.latitude)-\(coordinate.longitude)"
-        case .settings: return "settings"
         case .categories: return "categories"
         }
     }
