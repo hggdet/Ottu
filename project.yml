@@ -83,6 +83,7 @@ targets:
   OttuTests:
     type: bundle.unit-test
     platform: iOS
+    hostApplication: Ottu
     sources:
       - path: Tests/OttuTests
     dependencies:
