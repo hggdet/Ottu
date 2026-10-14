@@ -23,6 +23,7 @@ struct SavedPlacesView: View {
 }
 
 struct SavedPlacesListView: View {
+    @Environment(\.locale) private var locale
     let savedPlaces: [Place]
     let communityPlaces: [Place]
     let onSelect: (Place) -> Void
@@ -32,31 +33,43 @@ struct SavedPlacesListView: View {
 
     var body: some View {
         List {
-            Section("saved.section") {
+            Section {
                 if savedPlaces.isEmpty {
-                    ContentUnavailableView("saved.empty", systemImage: "bookmark", description: Text("saved.empty_hint"))
+                    ContentUnavailableView {
+                        AppLocalizedLabel("saved.empty", systemImage: "bookmark")
+                    } description: {
+                        AppLocalizedText("saved.empty_hint")
+                    }
                 } else {
                     ForEach(savedPlaces) { place in
                         placeRow(place, onRemove: onRemoveSaved)
                     }
                 }
+            } header: {
+                AppLocalizedText("saved.section")
             }
-            Section("community.section") {
+            Section {
                 if communityPlaces.isEmpty {
-                    ContentUnavailableView("community.empty", systemImage: "mappin.and.ellipse", description: Text("community.empty_hint"))
+                    ContentUnavailableView {
+                        AppLocalizedLabel("community.empty", systemImage: "mappin.and.ellipse")
+                    } description: {
+                        AppLocalizedText("community.empty_hint")
+                    }
                 } else {
                     ForEach(communityPlaces) { place in
                         placeRow(place, onRemove: onRemoveCommunity)
                     }
                 }
+            } header: {
+                AppLocalizedText("community.section")
             }
         }
-        .navigationTitle("saved.title")
+        .navigationTitle(Text(AppLocalization.string("saved.title", locale: locale)))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button(action: onDismiss) {
-                    Label("common.done", systemImage: "checkmark")
+                    AppLocalizedLabel("common.done", systemImage: "checkmark")
                 }
             }
         }
@@ -75,14 +88,14 @@ struct SavedPlacesListView: View {
                     }
                 }
                 Spacer()
-                Image(systemName: "chevron.left").font(.caption).foregroundStyle(.tertiary)
+                Image(systemName: "chevron.forward").font(.caption).foregroundStyle(.tertiary)
             }
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .swipeActions(edge: .trailing) {
             Button(role: .destructive) { onRemove(place) } label: {
-                Label("common.delete", systemImage: "trash")
+                AppLocalizedLabel("common.delete", systemImage: "trash")
             }
         }
     }

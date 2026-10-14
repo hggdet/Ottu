@@ -24,7 +24,7 @@ struct MapHomeView: View {
     @State private var isSearching = false
     @State private var isRouting = false
     @State private var locateWhenReady = false
-    @State private var activeErrorTitle: LocalizedStringKey = "search.error_title"
+    @State private var activeErrorTitle = ""
     @State private var activeErrorMessage: String?
     @FocusState private var searchFocused: Bool
 
@@ -32,7 +32,11 @@ struct MapHomeView: View {
     private let routeService: any RoutingProviding = OSRMRouteService()
 
     private var currentLanguage: String {
-        locale.language.languageCode?.identifier ?? "ar"
+        AppLocalization.languageCode(for: locale)
+    }
+
+    private var searchTaskKey: String {
+        "\(currentLanguage):\(query)"
     }
 
     var body: some View {
@@ -58,7 +62,7 @@ struct MapHomeView: View {
                 if let statusKey = offlineManager.statusKey {
                     HStack(spacing: 7) {
                         if offlineManager.progress.map({ $0 < 1 }) == true { ProgressView().controlSize(.mini) }
-                        Text(LocalizedStringKey(statusKey))
+                        AppLocalizedText(statusKey)
                         if let progress = offlineManager.progress {
                             Text("\(Int(progress * 100))%")
                                 .font(.caption.monospacedDigit().weight(.semibold))
@@ -84,11 +88,11 @@ struct MapHomeView: View {
                 .padding(.top, 10)
                 .padding(.bottom, 8)
         }
-        .task(id: query) { await searchPlaces(for: query) }
+        .task(id: searchTaskKey) { await searchPlaces(for: query) }
         .onChange(of: locationManager.coordinate) { _, coordinate in
             guard locateWhenReady, let coordinate else { return }
             locateWhenReady = false
-            focusMap(on: coordinate, named: String(localized: "location.current", locale: locale))
+            focusMap(on: coordinate, named: AppLocalization.string("location.current", locale: locale))
         }
         .sheet(item: $activeSheet) { sheet in
             sheetContent(for: sheet)
@@ -118,12 +122,12 @@ struct MapHomeView: View {
                 onRemoveCommunityPlace: { localStore.removeCommunityPlace($0) }
             )
         }
-        .alert(activeErrorTitle, isPresented: Binding(
+        .alert(Text(activeErrorTitle), isPresented: Binding(
             get: { activeErrorMessage != nil },
             set: { if !$0 { activeErrorMessage = nil } }
         )) {
             Button(role: .cancel) { activeErrorMessage = nil } label: {
-                Label("common.ok", systemImage: "checkmark")
+                AppLocalizedLabel("common.ok", systemImage: "checkmark")
             }
         } message: {
             Text(activeErrorMessage ?? "")
@@ -136,6 +140,7 @@ struct MapHomeView: View {
                 Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
                 TextField(AppLocalization.string("search.placeholder", locale: locale), text: $query)
                     .focused($searchFocused)
+                    .textFieldStyle(.plain)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .submitLabel(.search)
@@ -154,8 +159,9 @@ struct MapHomeView: View {
                 }
             }
             .padding(.horizontal, 17)
-            .frame(minHeight: 52)
+            .frame(height: 46)
             .background(.ultraThinMaterial, in: Capsule())
+            .clipShape(Capsule())
             .shadow(color: .black.opacity(0.12), radius: 12, y: 4)
             if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 resultsPanel
@@ -236,7 +242,7 @@ struct MapHomeView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 } else if isRouting {
-                    Text("directions.calculating").font(.caption).foregroundStyle(.secondary)
+                    AppLocalizedText("directions.calculating").font(.caption).foregroundStyle(.secondary)
                 }
             }
             Spacer()
@@ -248,7 +254,7 @@ struct MapHomeView: View {
             } label: {
                 Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
             }
-            .accessibilityLabel(Text("common.close"))
+            .accessibilityLabel(Text(AppLocalization.string("common.close", locale: locale)))
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
@@ -260,15 +266,7 @@ struct MapHomeView: View {
         let usesMiles = distanceUnit == "mi"
         let distance = usesMiles ? plan.distanceKilometers * 0.621371 : plan.distanceKilometers
         let formatKey = usesMiles ? "directions.summary_format_miles" : "directions.summary_format"
-        let language = locale.language.languageCode?.identifier ?? "ar"
-        let localizationBundle: Bundle
-        if let path = Bundle.main.path(forResource: language, ofType: "lproj"),
-           let bundle = Bundle(path: path) {
-            localizationBundle = bundle
-        } else {
-            localizationBundle = .main
-        }
-        let format = localizationBundle.localizedString(forKey: formatKey, value: nil, table: nil)
+        let format = AppLocalization.string(formatKey, locale: locale)
         return String(format: format, locale: locale, arguments: [distance, plan.durationMinutes])
     }
 
@@ -395,8 +393,8 @@ struct MapHomeView: View {
             guard !Task.isCancelled else { return }
             results = Array(localMatches.prefix(8))
             if localMatches.isEmpty {
-                activeErrorTitle = "search.error_title"
-                activeErrorMessage = String(localized: "search.error_message", locale: locale)
+                activeErrorTitle = AppLocalization.string("search.error_title", locale: locale)
+                activeErrorMessage = AppLocalization.string("search.error_message", locale: locale)
             }
         }
     }
@@ -407,7 +405,7 @@ struct MapHomeView: View {
 
     private func centerOnMyLocation() {
         if let coordinate = locationManager.coordinate {
-            focusMap(on: coordinate, named: String(localized: "location.current", locale: locale))
+            focusMap(on: coordinate, named: AppLocalization.string("location.current", locale: locale))
         } else {
             locateWhenReady = true
             locationManager.requestLocation()
@@ -445,8 +443,8 @@ struct MapHomeView: View {
             } catch {
                 guard !Task.isCancelled else { return }
                 routeTarget = nil
-                activeErrorTitle = "directions.error_title"
-                activeErrorMessage = String(localized: "directions.error_message", locale: locale)
+                activeErrorTitle = AppLocalization.string("directions.error_title", locale: locale)
+                activeErrorMessage = AppLocalization.string("directions.error_message", locale: locale)
             }
         }
     }

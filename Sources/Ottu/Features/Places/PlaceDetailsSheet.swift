@@ -28,7 +28,7 @@ struct PlaceDetailsSheet: View {
             }
 
             Text(String(
-                format: String(localized: "place.coordinates_format", locale: locale),
+                format: AppLocalization.string("place.coordinates_format", locale: locale),
                 place.coordinate.latitude,
                 place.coordinate.longitude
             ))
@@ -37,7 +37,7 @@ struct PlaceDetailsSheet: View {
             .textSelection(.enabled)
 
             Button(action: onDirections) {
-                Label("directions.start", systemImage: "arrow.triangle.turn.up.right.diamond.fill")
+                AppLocalizedLabel("directions.start", systemImage: "arrow.triangle.turn.up.right.diamond.fill")
                     .font(.headline)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
@@ -48,7 +48,7 @@ struct PlaceDetailsSheet: View {
 
             HStack(spacing: 12) {
                 Button(action: onToggleSaved) {
-                    Label(isSaved ? "place.saved" : "place.save", systemImage: isSaved ? "bookmark.fill" : "bookmark")
+                    AppLocalizedLabel(isSaved ? "place.saved" : "place.save", systemImage: isSaved ? "bookmark.fill" : "bookmark", locale: locale)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 13)
                         .background(.tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 14))
@@ -56,7 +56,7 @@ struct PlaceDetailsSheet: View {
                 .buttonStyle(.plain)
 
                 ShareLink(item: place.openStreetMapURL) {
-                    Label("place.share", systemImage: "square.and.arrow.up")
+                    AppLocalizedLabel("place.share", systemImage: "square.and.arrow.up")
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 13)
                         .background(.tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 14))
@@ -65,7 +65,7 @@ struct PlaceDetailsSheet: View {
             }
 
             Button(action: onReport) {
-                Label("incident.report", systemImage: "exclamationmark.bubble")
+                AppLocalizedLabel("incident.report", systemImage: "exclamationmark.bubble")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }

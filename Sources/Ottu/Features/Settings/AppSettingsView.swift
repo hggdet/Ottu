@@ -21,8 +21,7 @@ struct AppSettingsView: View {
     }
 
     private var isRightToLeft: Bool {
-        let language = interfaceLocale.language.languageCode?.identifier ?? "ar"
-        return language == "ar" || language == "ku"
+        AppLocalization.isRightToLeft(interfaceLocale)
     }
 
     var body: some View {
@@ -123,7 +122,7 @@ struct AppSettingsView: View {
 
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(action: { dismiss() }) {
-                        Label("common.done", systemImage: "checkmark")
+                        AppLocalizedLabel("common.done", systemImage: "checkmark", locale: interfaceLocale)
                     }
                 }
             }
@@ -134,6 +133,7 @@ struct AppSettingsView: View {
 }
 
 private struct OfflineMapsSettingsView: View {
+    @Environment(\.locale) private var locale
     @ObservedObject var manager: OfflineMapManager
     let mapCenter: GeoCoordinate
     let isDark: Bool
@@ -144,7 +144,7 @@ private struct OfflineMapsSettingsView: View {
         Form {
             if manager.hasOfflineArea {
                 Label {
-                    Text(LocalizedStringKey(manager.statusKey ?? (manager.isDownloading ? "offline.downloading" : "offline.complete")))
+                    AppLocalizedText(manager.statusKey ?? (manager.isDownloading ? "offline.downloading" : "offline.complete"))
                 } icon: {
                     Image(systemName: manager.isDownloading ? "arrow.down.circle" : "checkmark.circle.fill")
                 }
@@ -154,50 +154,56 @@ private struct OfflineMapsSettingsView: View {
                     ProgressView(value: progress)
                 }
                 if let size = manager.offlineAreaSize {
-                    LabeledContent("settings.storage_used", value: size)
+                    LabeledContent {
+                        Text(size)
+                    } label: {
+                        AppLocalizedText("settings.storage_used")
+                    }
                 }
                 Button(role: .destructive) {
                     confirmRemove = true
                 } label: {
-                    Label("offline.remove", systemImage: "trash")
+                    AppLocalizedLabel("offline.remove", systemImage: "trash")
                 }
             } else {
-                ContentUnavailableView(
-                    "offline.empty_title",
-                    systemImage: "map",
-                    description: Text("offline.empty_hint")
-                )
+                ContentUnavailableView {
+                    AppLocalizedLabel("offline.empty_title", systemImage: "map")
+                } description: {
+                    AppLocalizedText("offline.empty_hint")
+                }
                 Button {
                     manager.downloadArea(
                         around: mapCenter,
                         styleURL: MapConfiguration.styleURL(isDark: isDark)
                     )
                 } label: {
-                    Label("offline.download", systemImage: "arrow.down.circle")
+                    AppLocalizedLabel("offline.download", systemImage: "arrow.down.circle")
                 }
             }
 
             if let statusKey = manager.statusKey, !manager.hasOfflineArea {
-                Text(LocalizedStringKey(statusKey))
+                AppLocalizedText(statusKey)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
         }
-        .navigationTitle("settings.offline_maps")
+        .navigationTitle(Text(AppLocalization.string("settings.offline_maps", locale: locale)))
         .navigationBarTitleDisplayMode(.inline)
         .confirmationDialog(
-            "offline.remove_confirmation_title",
+            Text(AppLocalization.string("offline.remove_confirmation_title", locale: locale)),
             isPresented: $confirmRemove,
             titleVisibility: .visible
         ) {
-            Button("offline.remove", role: .destructive) {
+            Button(role: .destructive) {
                 manager.removeDownloadedArea()
+            } label: {
+                AppLocalizedText("offline.remove")
             }
             Button(role: .cancel) { } label: {
-                Label("common.cancel", systemImage: "xmark")
+                AppLocalizedLabel("common.cancel", systemImage: "xmark")
             }
         } message: {
-            Text("offline.remove_confirmation_message")
+            AppLocalizedText("offline.remove_confirmation_message")
         }
     }
 }

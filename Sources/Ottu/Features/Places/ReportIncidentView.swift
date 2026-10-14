@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ReportIncidentView: View {
+    @Environment(\.locale) private var locale
     let coordinate: GeoCoordinate
     let reports: [IncidentReport]
     let onSave: (IncidentReport) -> Void
@@ -13,20 +14,24 @@ struct ReportIncidentView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("incident.new") {
-                    Picker("incident.type", selection: $kind) {
+                Section {
+                    Picker(selection: $kind) {
                         ForEach(IncidentKind.allCases) { item in
-                            Label(LocalizedStringKey(item.titleKey), systemImage: item.symbol).tag(item)
+                            AppLocalizedLabel(item.titleKey, systemImage: item.symbol).tag(item)
                         }
+                    } label: {
+                        AppLocalizedText("incident.type")
                     }
-                    TextField("incident.note_optional", text: $note, axis: .vertical)
+                    TextField(AppLocalization.string("incident.note_optional", locale: locale), text: $note, axis: .vertical)
                         .lineLimit(2...4)
                     Text(String(format: "%.5f, %.5f", coordinate.latitude, coordinate.longitude))
                         .font(.footnote.monospacedDigit())
                         .foregroundStyle(.secondary)
+                } header: {
+                    AppLocalizedText("incident.new")
                 }
                 Section {
-                    Text("incident.local_only")
+                    AppLocalizedText("incident.local_only")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Button {
@@ -34,19 +39,19 @@ struct ReportIncidentView: View {
                         showSavedMessage = true
                         note = ""
                     } label: {
-                        Label("incident.submit", systemImage: "paperplane.fill")
+                        AppLocalizedLabel("incident.submit", systemImage: "paperplane.fill")
                             .frame(maxWidth: .infinity)
                     }
                 }
                 if !reports.isEmpty {
-                    Section("incident.recent") {
+                    Section {
                         ForEach(reports.prefix(8)) { report in
                             HStack(alignment: .top, spacing: 10) {
                                 Image(systemName: report.kind.symbol)
                                     .foregroundStyle(.orange)
                                     .frame(width: 22)
                                 VStack(alignment: .leading, spacing: 3) {
-                                    Text(LocalizedStringKey(report.kind.titleKey)).font(.subheadline.weight(.medium))
+                                    AppLocalizedText(report.kind.titleKey).font(.subheadline.weight(.medium))
                                     if !report.note.isEmpty {
                                         Text(report.note).font(.caption).foregroundStyle(.secondary)
                                     }
@@ -55,24 +60,26 @@ struct ReportIncidentView: View {
                                 }
                             }
                         }
+                    } header: {
+                        AppLocalizedText("incident.recent")
                     }
                 }
             }
-            .navigationTitle("incident.title")
+            .navigationTitle(Text(AppLocalization.string("incident.title", locale: locale)))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button(action: onCancel) {
-                        Label("common.done", systemImage: "checkmark")
+                        AppLocalizedLabel("common.done", systemImage: "checkmark")
                     }
                 }
             }
-            .alert("incident.saved_title", isPresented: $showSavedMessage) {
+            .alert(Text(AppLocalization.string("incident.saved_title", locale: locale)), isPresented: $showSavedMessage) {
                 Button(role: .cancel) { } label: {
-                    Label("common.ok", systemImage: "checkmark")
+                    AppLocalizedLabel("common.ok", systemImage: "checkmark")
                 }
             } message: {
-                Text("incident.saved_message")
+                AppLocalizedText("incident.saved_message")
             }
         }
     }

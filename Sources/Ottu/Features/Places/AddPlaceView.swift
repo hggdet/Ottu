@@ -16,30 +16,34 @@ struct AddPlaceView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("place.details") {
-                    TextField("place.name", text: $name)
+                Section {
+                    TextField(AppLocalization.string("place.name", locale: locale), text: $name)
                         .focused($nameFocused)
                         .accessibilityIdentifier("newPlaceName")
-                    TextField("place.street_optional", text: $street)
-                    TextField("place.city_optional", text: $city)
+                    TextField(AppLocalization.string("place.street_optional", locale: locale), text: $street)
+                    TextField(AppLocalization.string("place.city_optional", locale: locale), text: $city)
+                } header: {
+                    AppLocalizedText("place.details", locale: locale)
                 }
-                Section("place.location") {
+                Section {
                     Text(String(format: "%.5f, %.5f", coordinate.latitude, coordinate.longitude))
                         .font(.footnote.monospacedDigit())
                         .textSelection(.enabled)
+                } header: {
+                    AppLocalizedText("place.location", locale: locale)
                 }
                 Section {
-                    Text("community.local_only")
+                    AppLocalizedText("community.local_only", locale: locale)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
             }
-            .navigationTitle("community.add_place")
+            .navigationTitle(Text(AppLocalization.string("community.add_place", locale: locale)))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button(action: onCancel) {
-                        Label("common.cancel", systemImage: "xmark")
+                        AppLocalizedLabel("common.cancel", systemImage: "xmark", locale: locale)
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
@@ -49,12 +53,12 @@ struct AddPlaceView: View {
                             name: name.trimmingCharacters(in: .whitespacesAndNewlines),
                             street: street.nilIfBlank,
                             city: city.nilIfBlank,
-                            country: String(localized: "country.iraq", locale: locale),
+                            country: AppLocalization.string("country.iraq", locale: locale),
                             coordinate: coordinate
                         )
                         onSave(place)
                     } label: {
-                        Label("common.save", systemImage: "checkmark")
+                        AppLocalizedLabel("common.save", systemImage: "checkmark", locale: locale)
                     }
                     .disabled(!canSave)
                 }

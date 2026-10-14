@@ -38,4 +38,33 @@ final class PlaceTests: XCTestCase {
         XCTAssertEqual(report.kind, .checkpoint)
         XCTAssertEqual(report.coordinate, coordinate)
     }
+
+    func testSetupLocalizationKeysResolveInEverySupportedLanguage() {
+        let keys = ["setup.language.message", "setup.progress_format"]
+
+        for language in ["ar", "en", "ku"] {
+            let locale = Locale(identifier: language)
+            for key in keys {
+                XCTAssertNotEqual(
+                    AppLocalization.string(key, locale: locale),
+                    key,
+                    "Missing \(key) translation for \(language)"
+                )
+            }
+        }
+    }
+
+    func testMissingLocalizationDoesNotExposeRawKey() {
+        let key = "missing.translation.key"
+
+        XCTAssertEqual(AppLocalization.string(key, locale: Locale(identifier: "ar")), "")
+    }
+
+    func testAppLocalizationRecognizesRightToLeftLanguages() {
+        XCTAssertTrue(AppLocalization.isRightToLeft(Locale(identifier: "ar")))
+        XCTAssertTrue(AppLocalization.isRightToLeft(Locale(identifier: "ku")))
+        XCTAssertTrue(AppLocalization.isRightToLeft(Locale(identifier: "ckb")))
+        XCTAssertFalse(AppLocalization.isRightToLeft(Locale(identifier: "en")))
+        XCTAssertEqual(AppLocalization.languageCode(for: Locale(identifier: "ckb")), "ku")
+    }
 }

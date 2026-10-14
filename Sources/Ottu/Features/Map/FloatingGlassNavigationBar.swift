@@ -50,17 +50,36 @@ struct FloatingGlassNavigationBar: View {
     }
 
     var body: some View {
-        HStack(spacing: 8) {
-            ForEach(MapNavigationTab.allCases) { tab in
-                tabButton(for: tab)
-            }
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .accessibilityElement(children: .contain)
+        adaptiveNavigationBar
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .accessibilityElement(children: .contain)
     }
 
-    private func tabButton(for tab: MapNavigationTab) -> some View {
+    @ViewBuilder
+    private var adaptiveNavigationBar: some View {
+#if compiler(>=6.2)
+        if #available(iOS 26.0, *) {
+            GlassEffectContainer(spacing: 10) {
+                navigationButtons(useNativeGlass: true)
+            }
+        } else {
+            navigationButtons(useNativeGlass: false)
+        }
+#else
+        navigationButtons(useNativeGlass: false)
+#endif
+    }
+
+    private func navigationButtons(useNativeGlass: Bool) -> some View {
+        HStack(spacing: 8) {
+            ForEach(MapNavigationTab.allCases) { tab in
+                tabButton(for: tab, useNativeGlass: useNativeGlass)
+            }
+        }
+    }
+
+    private func tabButton(for tab: MapNavigationTab, useNativeGlass: Bool) -> some View {
         let isSelected = selection == tab
         let foreground = isSelected ? selectedColor : unselectedColor
         let title = AppLocalization.string(tab.titleKey, locale: locale)
@@ -76,7 +95,7 @@ struct FloatingGlassNavigationBar: View {
                     Circle()
                         .fill(opaqueSurfaceColor.opacity(1 - normalizedGlassIntensity))
 
-                    glassLayer
+                    glassLayer(useNativeGlass: useNativeGlass)
 
                     if isSelected {
                         selectedHighlightCircle
@@ -91,8 +110,9 @@ struct FloatingGlassNavigationBar: View {
                         .foregroundStyle(foreground)
                         .symbolEffect(.bounce, value: isSelected)
                         .contentTransition(.symbolEffect(.replace))
+                        .scaleEffect(isSelected ? 1.04 : 1)
                 }
-                .frame(width: 58, height: 58)
+                .frame(width: 50, height: 50)
 
                 Text(title)
                     .font(.system(size: 10.5, weight: isSelected ? .semibold : .regular, design: .rounded))
@@ -110,11 +130,24 @@ struct FloatingGlassNavigationBar: View {
     }
 
     @ViewBuilder
-    private var glassLayer: some View {
+    private func glassLayer(useNativeGlass: Bool) -> some View {
         if normalizedGlassIntensity > 0 {
+#if compiler(>=6.2)
+            if #available(iOS 26.0, *), useNativeGlass {
+                Circle()
+                    .fill(.clear)
+                    .glassEffect(.regular, in: Circle())
+                    .opacity(normalizedGlassIntensity)
+            } else {
+                Circle()
+                    .fill(.ultraThinMaterial)
+                    .opacity(normalizedGlassIntensity)
+            }
+#else
             Circle()
                 .fill(.ultraThinMaterial)
                 .opacity(normalizedGlassIntensity)
+#endif
         }
     }
 

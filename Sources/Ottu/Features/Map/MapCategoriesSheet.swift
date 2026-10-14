@@ -13,19 +13,19 @@ struct MapCategoriesSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("categories.place_types")
+                        AppLocalizedText("categories.place_types", locale: locale)
                             .font(.headline)
                             .padding(.horizontal, 2)
                         LazyVGrid(columns: columns, spacing: 12) {
                             ForEach(MapPlaceCategory.allCases) { category in
                                 Button {
-                                    onSelectCategory(String(localized: category.queryResource, locale: locale))
+                                    onSelectCategory(category.searchQuery(for: locale))
                                 } label: {
                                     VStack(spacing: 11) {
                                         Image(systemName: category.symbol)
                                             .font(.system(size: 24, weight: .regular))
                                             .foregroundStyle(.tint)
-                                        Text(category.title)
+                                        AppLocalizedText(category.title, locale: locale)
                                             .font(.subheadline.weight(.medium))
                                             .foregroundStyle(.primary)
                                             .multilineTextAlignment(.center)
@@ -39,13 +39,13 @@ struct MapCategoriesSheet: View {
                                     .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                                 }
                                 .buttonStyle(.plain)
-                                .accessibilityLabel(Text(category.title))
+                                .accessibilityLabel(Text(AppLocalization.string(category.title, locale: locale)))
                             }
                         }
                     }
 
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("categories.map_tools")
+                        AppLocalizedText("categories.map_tools", locale: locale)
                             .font(.headline)
                             .padding(.horizontal, 2)
                         LazyVGrid(columns: columns, spacing: 12) {
@@ -58,7 +58,7 @@ struct MapCategoriesSheet: View {
                                             .font(.system(size: 19, weight: .regular))
                                             .foregroundStyle(.tint)
                                             .frame(width: 24)
-                                        Text(action.title)
+                                        AppLocalizedText(action.title, locale: locale)
                                             .font(.subheadline.weight(.medium))
                                             .foregroundStyle(.primary)
                                             .multilineTextAlignment(.leading)
@@ -74,7 +74,7 @@ struct MapCategoriesSheet: View {
                                     .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                                 }
                                 .buttonStyle(.plain)
-                                .accessibilityLabel(Text(action.title))
+                                .accessibilityLabel(Text(AppLocalization.string(action.title, locale: locale)))
                             }
                         }
                     }
@@ -82,11 +82,13 @@ struct MapCategoriesSheet: View {
                 .padding(20)
             }
             .background(Color.primary.opacity(0.025))
-            .navigationTitle(Text("navigation.categories"))
+            .navigationTitle(Text(AppLocalization.string("navigation.categories", locale: locale)))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("common.done", action: onDismiss)
+                    Button(action: onDismiss) {
+                        AppLocalizedText("common.done", locale: locale)
+                    }
                 }
             }
         }
@@ -102,7 +104,7 @@ enum MapCategoryAction: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    var title: LocalizedStringKey {
+    var title: String {
         switch self {
         case .location: "location.my_location"
         case .saved: "saved.title"
@@ -135,20 +137,7 @@ private enum MapPlaceCategory: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    var title: LocalizedStringKey {
-        switch self {
-        case .restaurants: "categories.restaurants"
-        case .cafes: "categories.cafes"
-        case .markets: "categories.markets"
-        case .pharmacies: "categories.pharmacies"
-        case .hospitals: "categories.hospitals"
-        case .fuel: "categories.fuel"
-        case .parks: "categories.parks"
-        case .hotels: "categories.hotels"
-        }
-    }
-
-    var queryResource: LocalizedStringResource {
+    var title: String {
         switch self {
         case .restaurants: "categories.restaurants"
         case .cafes: "categories.cafes"
@@ -172,5 +161,29 @@ private enum MapPlaceCategory: String, CaseIterable, Identifiable {
         case .parks: "tree"
         case .hotels: "bed.double"
         }
+    }
+
+    func searchQuery(for locale: Locale) -> String {
+        let language = AppLocalization.languageCode(for: locale)
+        let terms: [String: String]
+        switch self {
+        case .restaurants:
+            terms = ["ar": "مطاعم", "ku": "چێشتخانەکان", "en": "Restaurants"]
+        case .cafes:
+            terms = ["ar": "مقاهٍ", "ku": "قاوەخانەکان", "en": "Cafes"]
+        case .markets:
+            terms = ["ar": "أسواق", "ku": "بازاڕەکان", "en": "Markets"]
+        case .pharmacies:
+            terms = ["ar": "صيدليات", "ku": "دەرمانخانەکان", "en": "Pharmacies"]
+        case .hospitals:
+            terms = ["ar": "مستشفيات", "ku": "نەخۆشخانەکان", "en": "Hospitals"]
+        case .fuel:
+            terms = ["ar": "محطات وقود", "ku": "پەمپەکانی سووتەمەنی", "en": "Gas stations"]
+        case .parks:
+            terms = ["ar": "حدائق", "ku": "باخچەکان", "en": "Parks"]
+        case .hotels:
+            terms = ["ar": "فنادق", "ku": "هوتێلەکان", "en": "Hotels"]
+        }
+        return terms[language] ?? terms["en"]!
     }
 }

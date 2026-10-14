@@ -14,7 +14,6 @@ targets:
     platform: iOS
     sources:
       - path: Sources/Ottu
-    resources:
       - path: Resources
     dependencies:
       - package: MapLibre

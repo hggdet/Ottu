@@ -28,13 +28,13 @@ struct FirstRunSetupView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("app.name")
+                AppLocalizedText("app.name", locale: setupLocale)
                     .font(.headline.weight(.semibold))
                 Spacer()
                 Text(String(
-                    format: String(localized: "setup.progress_format", locale: setupLocale),
-                    step.number,
-                    4
+                    format: AppLocalization.string("setup.progress_format", locale: setupLocale),
+                    locale: setupLocale,
+                    arguments: [step.number, 4]
                 ))
                 .font(.caption.weight(.medium))
                 .foregroundStyle(.secondary)
@@ -55,11 +55,11 @@ struct FirstRunSetupView: View {
                         .accessibilityHidden(true)
 
                     VStack(spacing: 9) {
-                        Text(step.title)
+                        AppLocalizedText(step.titleKey, locale: setupLocale)
                             .font(.title2.weight(.bold))
                             .multilineTextAlignment(.center)
 
-                        Text(step.message)
+                        AppLocalizedText(step.messageKey, locale: setupLocale)
                             .font(.body)
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
@@ -82,7 +82,7 @@ struct FirstRunSetupView: View {
                         if isRequestingNotifications {
                             ProgressView().tint(.white)
                         }
-                        Text(primaryButtonTitle)
+                        AppLocalizedText(primaryButtonTitle, locale: setupLocale)
                             .fontWeight(.semibold)
                     }
                     .frame(maxWidth: .infinity)
@@ -95,7 +95,7 @@ struct FirstRunSetupView: View {
 
                 if showsSecondaryAction {
                     Button(action: performSecondaryAction) {
-                        Text(secondaryButtonTitle)
+                        AppLocalizedText(secondaryButtonTitle, locale: setupLocale)
                             .font(.subheadline.weight(.medium))
                             .foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity)
@@ -144,10 +144,10 @@ struct FirstRunSetupView: View {
         }
     }
 
-    private func choiceRow(_ title: LocalizedStringKey, isSelected: Bool, action: @escaping () -> Void) -> some View {
+    private func choiceRow(_ title: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 12) {
-                Text(title)
+                AppLocalizedText(title, locale: setupLocale)
                     .font(.body.weight(.medium))
                     .foregroundStyle(.primary)
                 Spacer()
@@ -168,7 +168,7 @@ struct FirstRunSetupView: View {
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
-    private var primaryButtonTitle: LocalizedStringKey {
+    private var primaryButtonTitle: String {
         switch step {
         case .location:
             return locationManager.authorizationStatus == .notDetermined ? "setup.location.allow" : "setup.continue"
@@ -181,7 +181,7 @@ struct FirstRunSetupView: View {
         }
     }
 
-    private var secondaryButtonTitle: LocalizedStringKey {
+    private var secondaryButtonTitle: String {
         step == .location ? "setup.location.skip" : "setup.notifications.skip"
     }
 
@@ -257,7 +257,7 @@ private enum SetupStep {
         }
     }
 
-    var title: LocalizedStringKey {
+    var titleKey: String {
         switch self {
         case .location: "setup.location.title"
         case .language: "setup.language.title"
@@ -266,7 +266,7 @@ private enum SetupStep {
         }
     }
 
-    var message: LocalizedStringKey {
+    var messageKey: String {
         switch self {
         case .location: "setup.location.message"
         case .language: "setup.language.message"

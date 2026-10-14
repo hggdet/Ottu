@@ -13,8 +13,7 @@ struct OttuApp: App {
     }
 
     private var isRightToLeft: Bool {
-        let language = interfaceLocale.language.languageCode?.identifier ?? "ar"
-        return language == "ar" || language == "ku"
+        AppLocalization.isRightToLeft(interfaceLocale)
     }
 
     private var preferredScheme: ColorScheme? {
