@@ -130,9 +130,9 @@ struct FirstRunSetupView: View {
         switch step {
         case .language:
             VStack(spacing: 10) {
-                choiceRow("العربية", isSelected: languageChoice == "ar") { languageChoice = "ar" }
-                choiceRow("English", isSelected: languageChoice == "en") { languageChoice = "en" }
-                choiceRow("کوردی (سۆرانی)", isSelected: languageChoice == "ku") { languageChoice = "ku" }
+                choiceRow("settings.language.arabic", isSelected: languageChoice == "ar") { languageChoice = "ar" }
+                choiceRow("settings.language.english", isSelected: languageChoice == "en") { languageChoice = "en" }
+                choiceRow("settings.language.kurdish", isSelected: languageChoice == "ku") { languageChoice = "ku" }
             }
         case .distance:
             VStack(spacing: 10) {

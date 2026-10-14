@@ -5,7 +5,10 @@
 "search.no_results" = "No results found";
 "search.loading" = "Searching…";
 "search.error_title" = "Search unavailable";
-"search.error_message" = "Check your internet connection and try again.";
+"search.error_message" = "Search could not be completed. Please try again later.";
+"search.offline_message" = "This device has no internet connection. Check your network and try again.";
+"search.service_error_message" = "Search could not be completed. Please try again later.";
+"search.retry" = "Retry search";
 "common.ok" = "OK";
 "common.done" = "Done";
 "common.cancel" = "Cancel";
@@ -89,6 +92,13 @@
 "settings.contact_report" = "Report or contact us";
 "settings.offline_maps" = "Offline maps";
 "settings.storage_used" = "Storage used";
+"settings.share_location" = "Share my location";
+"settings.share_location_hint" = "Send a link that opens your current location in Maps.";
+"settings.location_permission_title" = "Location access required";
+"settings.location_permission_message" = "Allow Ottu to access your location in device settings, then try again.";
+"settings.location_unavailable_title" = "Could not get your location";
+"settings.location_unavailable_message" = "We couldn't get a current location right now. Check that Location Services are enabled and try again.";
+"settings.open_app_settings" = "Open app settings";
 "offline.empty_title" = "No maps downloaded";
 "offline.empty_hint" = "Download the current map area to use it offline.";
 "offline.remove" = "Delete download";

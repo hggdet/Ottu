@@ -54,6 +54,25 @@ final class PlaceTests: XCTestCase {
         }
     }
 
+    func testLanguageChoiceNamesResolveInEverySupportedLanguage() {
+        let languageNames = [
+            "settings.language.arabic": "العربية",
+            "settings.language.english": "English",
+            "settings.language.kurdish": "کوردی (سۆرانی)"
+        ]
+
+        for language in ["ar", "en", "ku"] {
+            let locale = Locale(identifier: language)
+            for (key, expectedName) in languageNames {
+                XCTAssertEqual(
+                    AppLocalization.string(key, locale: locale),
+                    expectedName,
+                    "Incorrect or missing language name for \(key) in \(language)"
+                )
+            }
+        }
+    }
+
     func testMissingLocalizationDoesNotExposeRawKey() {
         let key = "missing.translation.key"
 

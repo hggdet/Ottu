@@ -5,7 +5,10 @@
 "search.no_results" = "هیچ ئەنجامێک نەدۆزرایەوە";
 "search.loading" = "گەڕان دەکرێت…";
 "search.error_title" = "گەڕان بەردەست نییە";
-"search.error_message" = "پەیوەندیی ئینتەرنێت بپشکنە و دووبارە هەوڵ بدەرەوە.";
+"search.error_message" = "نەتوانرا گەڕان تەواو بکرێت. دواتر دووبارە هەوڵ بدەرەوە.";
+"search.offline_message" = "ئەم ئامێرە پەیوەندیی ئینتەرنێتی نییە. تۆڕەکەت بپشکنە و دووبارە هەوڵ بدەرەوە.";
+"search.service_error_message" = "نەتوانرا گەڕان تەواو بکرێت. دواتر دووبارە هەوڵ بدەرەوە.";
+"search.retry" = "دووبارە هەوڵدانەوە";
 "common.ok" = "باشە";
 "common.done" = "تەواو";
 "common.cancel" = "هەڵوەشاندنەوە";
@@ -89,6 +92,13 @@
 "settings.contact_report" = "ڕاپۆرت یان پەیوەندی";
 "settings.offline_maps" = "نەخشەکانی بێ ئینتەرنێت";
 "settings.storage_used" = "بڕی شوێنی بەکارهاتوو";
+"settings.share_location" = "هاوبەشکردنی شوێنی من";
+"settings.share_location_hint" = "بەستەرێک بنێرە کە شوێنی ئێستات لە نەخشەکاندا دەکاتەوە.";
+"settings.location_permission_title" = "دەستگەیشتن بە شوێن پێویستە";
+"settings.location_permission_message" = "لە ڕێکخستنەکانی ئامێر ڕێگە بە وێن بدە شوێنەکەت ببینێت، پاشان دووبارە هەوڵ بدەرەوە.";
+"settings.location_unavailable_title" = "نەتوانرا شوێنەکەت دیاری بکرێت";
+"settings.location_unavailable_message" = "ئێستا نەتوانرا شوێنێکی نوێ بەدەست بهێنرێت. چالاکبوونی خزمەتگوزارییەکانی شوێن بپشکنە و دووبارە هەوڵ بدەرەوە.";
+"settings.open_app_settings" = "کردنەوەی ڕێکخستنەکانی ئەپ";
 "offline.empty_title" = "هیچ نەخشەیەک داونەگیراوە";
 "offline.empty_hint" = "ناوچەی ئێستای نەخشە دابگرە بۆ بەکارهێنانی بەبێ ئینتەرنێت.";
 "offline.remove" = "سڕینەوەی داگرتن";

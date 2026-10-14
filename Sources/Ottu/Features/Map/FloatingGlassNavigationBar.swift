@@ -134,21 +134,55 @@ struct FloatingGlassNavigationBar: View {
         if normalizedGlassIntensity > 0 {
 #if compiler(>=6.2)
             if #available(iOS 26.0, *), useNativeGlass {
-                Circle()
-                    .fill(.clear)
-                    .glassEffect(.regular, in: Circle())
-                    .opacity(normalizedGlassIntensity)
+                decoratedGlassSurface(
+                    Circle()
+                        .fill(.clear)
+                        .glassEffect(.regular, in: Circle())
+                )
             } else {
-                Circle()
-                    .fill(.ultraThinMaterial)
-                    .opacity(normalizedGlassIntensity)
+                fallbackGlassSurface
             }
 #else
-            Circle()
-                .fill(.ultraThinMaterial)
-                .opacity(normalizedGlassIntensity)
+            fallbackGlassSurface
 #endif
         }
+    }
+
+    private var fallbackGlassSurface: some View {
+        decoratedGlassSurface(Circle().fill(.ultraThinMaterial))
+    }
+
+    private var glassHighlight: LinearGradient {
+        LinearGradient(
+            colors: [
+                Color.white.opacity(colorScheme == .dark ? 0.24 : 0.68),
+                Color.white.opacity(colorScheme == .dark ? 0.08 : 0.24),
+                Color.black.opacity(colorScheme == .dark ? 0.20 : 0.06)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
+    private func decoratedGlassSurface<Surface: View>(_ surface: Surface) -> some View {
+        surface
+            .overlay {
+                Circle().fill(glassHighlight)
+            }
+            .overlay {
+                Circle()
+                    .strokeBorder(
+                        Color.white.opacity(colorScheme == .dark ? 0.38 : 0.74),
+                        lineWidth: 1
+                    )
+            }
+            .shadow(
+                color: Color.black.opacity(colorScheme == .dark ? 0.28 : 0.14),
+                radius: 7,
+                x: 0,
+                y: 3
+            )
+            .opacity(normalizedGlassIntensity)
     }
 
     private var selectedHighlightCircle: some View {

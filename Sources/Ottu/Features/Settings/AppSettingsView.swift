@@ -1,11 +1,22 @@
 import SwiftUI
+import UIKit
 
 struct AppSettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Binding var selectedLanguage: String
+    @ObservedObject var locationManager: UserLocationManager
     @AppStorage("ottu.distanceUnit") private var distanceUnit = "km"
     @AppStorage("ottu.appearance") private var selectedAppearance = "system"
     @AppStorage("ottu.liquidGlassIntensity") private var liquidGlassIntensity = 1.0
+    @State private var isWaitingForLocation = false
+    @State private var requestedLocationUpdateID = 0
+    @State private var locationRequestTimeout: Task<Void, Never>?
+    @State private var shareURL: URL?
+    @State private var isShareSheetPresented = false
+    @State private var isLocationAlertPresented = false
+    @State private var shouldOfferAppSettings = false
+    @State private var locationAlertTitleKey = "settings.location_unavailable_title"
+    @State private var locationAlertMessageKey = "settings.location_unavailable_message"
 
     let savedPlaces: [Place]
     let communityPlaces: [Place]
@@ -46,27 +57,42 @@ struct AppSettingsView: View {
                 }
 
                 Section {
-                    VStack(spacing: 8) {
-                        Slider(value: $liquidGlassIntensity, in: 0...1, step: 0.01)
-                            .accessibilityLabel(Text(AppLocalization.string("settings.liquid_glass", locale: interfaceLocale)))
-                            .accessibilityValue(Text("\(Int((liquidGlassIntensity * 100).rounded()))%"))
-
-                        HStack {
-                            Text("0%")
-                            Spacer()
-                            Text("100%")
+                    Button(action: shareCurrentLocation) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "location.circle.fill")
+                                .font(.title3)
+                                .foregroundStyle(.tint)
+                                .frame(width: 24)
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(AppLocalization.string("settings.share_location", locale: interfaceLocale))
+                                    .font(.body)
+                                    .foregroundStyle(.primary)
+                                Text(AppLocalization.string("settings.share_location_hint", locale: interfaceLocale))
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer(minLength: 8)
+                            if isWaitingForLocation {
+                                ProgressView()
+                            } else {
+                                Image(systemName: "square.and.arrow.up")
+                                    .font(.footnote.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                            }
                         }
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .contentShape(Rectangle())
                     }
+                    .buttonStyle(.plain)
+                    .disabled(isWaitingForLocation)
+                    .accessibilityHint(Text(AppLocalization.string("settings.share_location_hint", locale: interfaceLocale)))
+                }
+
+                Section {
+                    Slider(value: $liquidGlassIntensity, in: 0...1, step: 0.01)
+                        .accessibilityLabel(Text(AppLocalization.string("settings.liquid_glass", locale: interfaceLocale)))
+                        .accessibilityValue(Text("\(Int((liquidGlassIntensity * 100).rounded()))%"))
                 } header: {
-                    HStack {
-                        Text(AppLocalization.string("settings.liquid_glass", locale: interfaceLocale))
-                        Spacer()
-                        Text("\(Int((liquidGlassIntensity * 100).rounded()))%")
-                            .font(.caption.monospacedDigit())
-                            .foregroundStyle(.secondary)
-                    }
+                    Text(AppLocalization.string("settings.liquid_glass", locale: interfaceLocale))
                 }
 
                 NavigationLink {
@@ -129,7 +155,126 @@ struct AppSettingsView: View {
         }
         .environment(\.locale, interfaceLocale)
         .environment(\.layoutDirection, isRightToLeft ? .rightToLeft : .leftToRight)
+        .onChange(of: locationManager.locationUpdateID) { _, updateID in
+            handleLocationUpdate(updateID)
+        }
+        .onChange(of: locationManager.authorizationStatus) { _, status in
+            guard isWaitingForLocation, status == .denied || status == .restricted else { return }
+            presentPermissionAlert()
+        }
+        .sheet(isPresented: $isShareSheetPresented, onDismiss: { shareURL = nil }) {
+            if let shareURL {
+                LocationActivitySheet(activityItems: [shareURL])
+            }
+        }
+        .alert(
+            Text(AppLocalization.string(locationAlertTitleKey, locale: interfaceLocale)),
+            isPresented: $isLocationAlertPresented
+        ) {
+            if shouldOfferAppSettings {
+                Button {
+                    if let settingsURL = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(settingsURL)
+                    }
+                } label: {
+                    Text(AppLocalization.string("settings.open_app_settings", locale: interfaceLocale))
+                }
+            }
+            Button(role: .cancel) { } label: {
+                Text(AppLocalization.string("common.ok", locale: interfaceLocale))
+            }
+        } message: {
+            Text(AppLocalization.string(locationAlertMessageKey, locale: interfaceLocale))
+        }
+        .onDisappear {
+            locationRequestTimeout?.cancel()
+        }
     }
+
+    private func shareCurrentLocation() {
+        guard !isWaitingForLocation else { return }
+        switch locationManager.authorizationStatus {
+        case .denied, .restricted:
+            presentPermissionAlert()
+        case .notDetermined, .authorizedAlways, .authorizedWhenInUse:
+            requestedLocationUpdateID = locationManager.locationUpdateID
+            isWaitingForLocation = true
+            locationManager.requestLocation()
+            locationRequestTimeout?.cancel()
+            locationRequestTimeout = Task { @MainActor in
+                do {
+                    try await Task.sleep(nanoseconds: 15_000_000_000)
+                } catch {
+                    return
+                }
+                guard isWaitingForLocation else { return }
+                presentLocationIssue()
+            }
+        @unknown default:
+            presentLocationIssue()
+        }
+    }
+
+    private func handleLocationUpdate(_ updateID: Int) {
+        guard isWaitingForLocation, updateID != requestedLocationUpdateID,
+              let coordinate = locationManager.coordinate,
+              let timestamp = locationManager.lastLocationTimestamp else { return }
+
+        let age = Date().timeIntervalSince(timestamp)
+        guard age >= -30, age <= 120 else { return }
+
+        isWaitingForLocation = false
+        locationRequestTimeout?.cancel()
+        shareURL = mapsURL(for: coordinate)
+        guard shareURL != nil else {
+            presentLocationIssue()
+            return
+        }
+        isShareSheetPresented = true
+    }
+
+    private func mapsURL(for coordinate: GeoCoordinate) -> URL? {
+        var components = URLComponents()
+        components.scheme = "https"
+        components.host = "maps.apple.com"
+        components.queryItems = [
+            URLQueryItem(name: "ll", value: "\(coordinate.latitude),\(coordinate.longitude)"),
+            URLQueryItem(name: "q", value: AppLocalization.string("location.current", locale: interfaceLocale))
+        ]
+        return components.url
+    }
+
+    private func presentLocationIssue() {
+        if locationManager.authorizationStatus == .denied || locationManager.authorizationStatus == .restricted {
+            presentPermissionAlert()
+            return
+        }
+        isWaitingForLocation = false
+        locationRequestTimeout?.cancel()
+        shouldOfferAppSettings = false
+        locationAlertTitleKey = "settings.location_unavailable_title"
+        locationAlertMessageKey = "settings.location_unavailable_message"
+        isLocationAlertPresented = true
+    }
+
+    private func presentPermissionAlert() {
+        isWaitingForLocation = false
+        locationRequestTimeout?.cancel()
+        shouldOfferAppSettings = true
+        locationAlertTitleKey = "settings.location_permission_title"
+        locationAlertMessageKey = "settings.location_permission_message"
+        isLocationAlertPresented = true
+    }
+}
+
+private struct LocationActivitySheet: UIViewControllerRepresentable {
+    let activityItems: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ controller: UIActivityViewController, context: Context) { }
 }
 
 private struct OfflineMapsSettingsView: View {

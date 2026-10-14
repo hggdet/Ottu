@@ -5,7 +5,10 @@
 "search.no_results" = "ما لقينا نتائج";
 "search.loading" = "جاري البحث…";
 "search.error_title" = "تعذّر البحث";
-"search.error_message" = "تحقق من اتصال الإنترنت وحاول مرة ثانية.";
+"search.error_message" = "تعذّر إكمال البحث الآن. حاول مرة أخرى لاحقًا.";
+"search.offline_message" = "لا يتوفر اتصال بالإنترنت على الجهاز. تحقق من الشبكة وحاول مرة ثانية.";
+"search.service_error_message" = "تعذّر إكمال البحث الآن. حاول مرة أخرى لاحقًا.";
+"search.retry" = "إعادة المحاولة";
 "common.ok" = "حسنًا";
 "common.done" = "تم";
 "common.cancel" = "إلغاء";
@@ -89,6 +92,13 @@
 "settings.contact_report" = "إبلاغ أو تواصل";
 "settings.offline_maps" = "الخرائط دون اتصال";
 "settings.storage_used" = "المساحة المستخدمة";
+"settings.share_location" = "مشاركة موقعي";
+"settings.share_location_hint" = "أرسل رابطًا يفتح موقعك الحالي في الخرائط.";
+"settings.location_permission_title" = "إذن الموقع مطلوب";
+"settings.location_permission_message" = "اسمح لوين بالوصول إلى موقعك من إعدادات الجهاز، ثم حاول مرة أخرى.";
+"settings.location_unavailable_title" = "تعذّر تحديد الموقع";
+"settings.location_unavailable_message" = "لم نتمكن من الحصول على موقع حالي الآن. تحقق من تفعيل خدمات الموقع وحاول مرة أخرى.";
+"settings.open_app_settings" = "فتح إعدادات التطبيق";
 "offline.empty_title" = "لا توجد خرائط منزّلة";
 "offline.empty_hint" = "نزّل نطاق الخريطة الحالي لاستخدامه دون اتصال.";
 "offline.remove" = "حذف التنزيل";

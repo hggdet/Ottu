@@ -6,6 +6,8 @@ import Foundation
 final class UserLocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published private(set) var coordinate: GeoCoordinate?
     @Published private(set) var authorizationStatus: CLAuthorizationStatus
+    @Published private(set) var locationUpdateID = 0
+    @Published private(set) var lastLocationTimestamp: Date?
 
     private let manager = CLLocationManager()
 
@@ -44,6 +46,8 @@ final class UserLocationManager: NSObject, ObservableObject, CLLocationManagerDe
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.last else { return }
         coordinate = GeoCoordinate(latitude: location.coordinate.latitude, longitude: location.coordinate.longitude)
+        lastLocationTimestamp = location.timestamp
+        locationUpdateID += 1
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {

@@ -9,13 +9,18 @@ struct PhotonPlaceSearchService: PlaceSearchProviding {
 
     func search(_ query: String, near coordinate: GeoCoordinate, language: String) async throws -> [Place] {
         var components = URLComponents(url: endpoint, resolvingAgainstBaseURL: false)
-        components?.queryItems = [
+        var queryItems = [
             URLQueryItem(name: "q", value: query),
             URLQueryItem(name: "lat", value: String(coordinate.latitude)),
             URLQueryItem(name: "lon", value: String(coordinate.longitude)),
-            URLQueryItem(name: "lang", value: language),
             URLQueryItem(name: "limit", value: "8")
         ]
+        // Photon currently supports only default, de, en, and fr. Sending ar/ku
+        // makes the API return HTTP 400 even though the device is online.
+        if ["de", "en", "fr"].contains(language) {
+            queryItems.append(URLQueryItem(name: "lang", value: language))
+        }
+        components?.queryItems = queryItems
         guard let url = components?.url else { throw SearchError.invalidURL }
 
         var request = URLRequest(url: url)

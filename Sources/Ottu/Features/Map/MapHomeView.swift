@@ -1,3 +1,4 @@
+import Foundation
 import SwiftUI
 
 struct MapHomeView: View {
@@ -19,6 +20,8 @@ struct MapHomeView: View {
     @State private var routeTask: Task<Void, Never>?
     @State private var mapCenter = MapConfiguration.initialCenter
     @State private var selectedTab: MapNavigationTab = .location
+    @State private var searchRetryToken = 0
+    @State private var searchErrorMessage: String?
     @AppStorage("ottu.liquidGlassIntensity") private var liquidGlassIntensity = 1.0
     @AppStorage("ottu.distanceUnit") private var distanceUnit = "km"
     @State private var isSearching = false
@@ -36,7 +39,7 @@ struct MapHomeView: View {
     }
 
     private var searchTaskKey: String {
-        "\(currentLanguage):\(query)"
+        "\(currentLanguage):\(searchRetryToken):\(query)"
     }
 
     var body: some View {
@@ -54,7 +57,6 @@ struct MapHomeView: View {
             .ignoresSafeArea()
 
             VStack(spacing: 10) {
-                searchPanel
                 Spacer(minLength: 0)
                 if let routeTarget {
                     routeSummary(for: routeTarget)
@@ -75,8 +77,13 @@ struct MapHomeView: View {
                 }
             }
             .padding(.horizontal, 14)
-            .padding(.top, 8)
             .padding(.bottom, 8)
+        }
+        .overlay(alignment: .top) {
+            searchPanel
+                .frame(maxWidth: .infinity, alignment: .top)
+                .padding(.horizontal, 14)
+                .padding(.top, 8)
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             FloatingGlassNavigationBar(
@@ -88,7 +95,10 @@ struct MapHomeView: View {
                 .padding(.top, 10)
                 .padding(.bottom, 8)
         }
-        .task(id: searchTaskKey) { await searchPlaces(for: query) }
+        .task(id: searchTaskKey) {
+            let taskKey = searchTaskKey
+            await searchPlaces(for: query, taskKey: taskKey)
+        }
         .onChange(of: locationManager.coordinate) { _, coordinate in
             guard locateWhenReady, let coordinate else { return }
             locateWhenReady = false
@@ -108,6 +118,7 @@ struct MapHomeView: View {
         }) {
             AppSettingsView(
                 selectedLanguage: $selectedLanguage,
+                locationManager: locationManager,
                 savedPlaces: localStore.savedPlaces,
                 communityPlaces: localStore.communityPlaces,
                 offlineManager: offlineManager,
@@ -152,6 +163,7 @@ struct MapHomeView: View {
                     Button {
                         query = ""
                         results = []
+                        searchErrorMessage = nil
                     } label: {
                         Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
                     }
@@ -173,6 +185,10 @@ struct MapHomeView: View {
 
     private var resultsPanel: some View {
         VStack(spacing: 0) {
+            if let searchErrorMessage {
+                searchFailureRow(searchErrorMessage)
+                if !results.isEmpty { Divider() }
+            }
             if results.isEmpty {
                 if isSearching {
                     HStack(spacing: 10) {
@@ -181,7 +197,7 @@ struct MapHomeView: View {
                         Spacer()
                     }
                     .padding(16)
-                } else {
+                } else if searchErrorMessage == nil {
                     Text(AppLocalization.string("search.no_results", locale: locale))
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
@@ -229,7 +245,29 @@ struct MapHomeView: View {
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
         .shadow(color: .black.opacity(0.1), radius: 12, y: 4)
-        .frame(maxHeight: 280)
+        .fixedSize(horizontal: false, vertical: results.isEmpty)
+        .frame(maxHeight: results.isEmpty ? nil : 280)
+    }
+
+    private func searchFailureRow(_ message: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "exclamationmark.triangle")
+                .font(.subheadline)
+                .foregroundStyle(.orange)
+            Text(message)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+            Button {
+                searchRetryToken += 1
+            } label: {
+                Image(systemName: "arrow.clockwise")
+                    .font(.subheadline.weight(.semibold))
+            }
+            .accessibilityLabel(Text(AppLocalization.string("search.retry", locale: locale)))
+        }
+        .padding(14)
     }
 
     private func routeSummary(for place: Place) -> some View {
@@ -315,6 +353,7 @@ struct MapHomeView: View {
                 locale: locale,
                 onSelectCategory: { category in
                     query = category
+                    searchRetryToken += 1
                     searchFocused = false
                     selectedTab = .categories
                     activeSheet = nil
@@ -360,16 +399,18 @@ struct MapHomeView: View {
     }
 
     @MainActor
-    private func searchPlaces(for rawQuery: String) async {
+    private func searchPlaces(for rawQuery: String, taskKey: String) async {
+        guard searchTaskKey == taskKey else { return }
         let text = rawQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        results = []
+        searchErrorMessage = nil
         guard text.count >= 2 else {
-            results = []
             isSearching = false
             return
         }
         isSearching = true
         defer {
-            if query.trimmingCharacters(in: .whitespacesAndNewlines) == text {
+            if searchTaskKey == taskKey {
                 isSearching = false
             }
         }
@@ -377,6 +418,7 @@ struct MapHomeView: View {
             try await Task.sleep(nanoseconds: 350_000_000)
         } catch { return }
         guard !Task.isCancelled,
+              searchTaskKey == taskKey,
               query.trimmingCharacters(in: .whitespacesAndNewlines) == text else { return }
 
         let localMatches = (localStore.savedPlaces + localStore.communityPlaces).filter {
@@ -384,19 +426,23 @@ struct MapHomeView: View {
         }
         do {
             let remote = try await searchService.search(text, near: mapCenter, language: currentLanguage)
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled, searchTaskKey == taskKey else { return }
             var seen = Set<String>()
             results = (localMatches + remote).filter { seen.insert($0.id).inserted }.prefix(8).map { $0 }
         } catch is CancellationError {
             return
         } catch {
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled, searchTaskKey == taskKey else { return }
             results = Array(localMatches.prefix(8))
-            if localMatches.isEmpty {
-                activeErrorTitle = AppLocalization.string("search.error_title", locale: locale)
-                activeErrorMessage = AppLocalization.string("search.error_message", locale: locale)
-            }
+            searchErrorMessage = localizedSearchFailure(for: error)
         }
+    }
+
+    private func localizedSearchFailure(for error: Error) -> String {
+        if let urlError = error as? URLError, urlError.code == .notConnectedToInternet {
+            return AppLocalization.string("search.offline_message", locale: locale)
+        }
+        return AppLocalization.string("search.service_error_message", locale: locale)
     }
 
     private func isLocal(_ place: Place) -> Bool {
