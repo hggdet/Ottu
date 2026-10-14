@@ -54,9 +54,12 @@ struct OttuMapView: UIViewRepresentable {
             context.coordinator.resetIraqBuildingLayers()
         }
         context.coordinator.applyCameraMode(is3D: is3D, to: mapView, animated: true)
-        if let selectedPlace, context.coordinator.lastSelectedPlaceID != selectedPlace.id {
-            context.coordinator.lastSelectedPlaceID = selectedPlace.id
-            mapView.setCenter(selectedPlace.coordinate.clCoordinate, zoomLevel: 15, animated: true)
+        if context.coordinator.lastSelectedPlaceID != selectedPlace?.id {
+            context.coordinator.lastSelectedPlaceID = selectedPlace?.id
+            context.coordinator.updateSelectedPlaceAnnotation(selectedPlace, on: mapView)
+            if let selectedPlace {
+                mapView.setCenter(selectedPlace.coordinate.clCoordinate, zoomLevel: 15, animated: true)
+            }
         }
         context.coordinator.updateRoute(route, on: mapView)
         context.coordinator.requestIraqBuildings(on: mapView)
@@ -71,6 +74,7 @@ struct OttuMapView: UIViewRepresentable {
         var onLongPress: (GeoCoordinate) -> Void
         var onCenterChanged: (GeoCoordinate) -> Void
         weak var iraqBuildingsManager: IraqBuildingFootprintsManager?
+        private var selectedPlaceAnnotation: MLNPointAnnotation?
         private var iraqBuildingsTask: Task<Void, Never>?
         private var lastIraqBuildingsRequestKey: String?
         private var appliedIraqBuildingFiles: [String: URL] = [:]
@@ -100,9 +104,24 @@ struct OttuMapView: UIViewRepresentable {
             requestIraqBuildings(on: mapView)
         }
 
+        func updateSelectedPlaceAnnotation(_ place: Place?, on mapView: MLNMapView) {
+            if let selectedPlaceAnnotation {
+                mapView.removeAnnotation(selectedPlaceAnnotation)
+                self.selectedPlaceAnnotation = nil
+            }
+            guard let place, !place.id.hasPrefix("focus-") else { return }
+            let annotation = MLNPointAnnotation()
+            annotation.coordinate = place.coordinate.clCoordinate
+            annotation.title = place.name
+            annotation.subtitle = place.subtitle.isEmpty ? nil : place.subtitle
+            mapView.addAnnotation(annotation)
+            selectedPlaceAnnotation = annotation
+        }
+
         func mapViewDidFinishLoadingMap(_ mapView: MLNMapView) {
-            applyFeatureColors(to: mapView.style)
-            ensureBuildingExtrusion(in: mapView.style)
+            let isDarkStyle = currentStyleURL == MapConfiguration.darkStyleURL
+            applyFeatureColors(to: mapView.style, isDark: isDarkStyle)
+            ensureBuildingExtrusion(in: mapView.style, isDark: isDarkStyle)
             applyCameraMode(is3D: is3D, to: mapView, animated: false)
             updateRoute(latestRoute, on: mapView, force: true)
             requestIraqBuildings(on: mapView, force: true)
@@ -153,11 +172,16 @@ struct OttuMapView: UIViewRepresentable {
                 guard !Task.isCancelled else { return }
                 let files = await manager.visibleGeoJSONFiles(in: viewport, zoom: zoom)
                 guard !Task.isCancelled, let currentStyle = mapView.style else { return }
-                self.applyIraqBuildingFiles(files, is3D: self.is3D, to: currentStyle)
+                self.applyIraqBuildingFiles(
+                    files,
+                    is3D: self.is3D,
+                    isDark: self.currentStyleURL == MapConfiguration.darkStyleURL,
+                    to: currentStyle
+                )
             }
         }
 
-        private func applyIraqBuildingFiles(_ files: [String: URL], is3D: Bool, to style: MLNStyle) {
+        private func applyIraqBuildingFiles(_ files: [String: URL], is3D: Bool, isDark: Bool, to style: MLNStyle) {
             if appliedIraqBuildings3D != is3D {
                 removeIraqBuildingLayers(from: style)
             }
@@ -174,12 +198,18 @@ struct OttuMapView: UIViewRepresentable {
                 style.addSource(source)
 
                 let fill = MLNFillStyleLayer(identifier: "ottu-iraq-buildings-fill-\(key)", source: source)
-                fill.fillColor = NSExpression(forConstantValue: UIColor(red: 0.94, green: 0.48, blue: 0.24, alpha: 1))
+                let buildingColor = isDark
+                    ? UIColor(red: 0.48, green: 0.39, blue: 0.32, alpha: 1)
+                    : UIColor(red: 0.94, green: 0.48, blue: 0.24, alpha: 1)
+                fill.fillColor = NSExpression(forConstantValue: buildingColor)
                 fill.fillOpacity = NSExpression(forConstantValue: 0.72)
                 insertIraqBuildingLayer(fill, into: style)
 
                 let outline = MLNLineStyleLayer(identifier: "ottu-iraq-buildings-outline-\(key)", source: source)
-                outline.lineColor = NSExpression(forConstantValue: UIColor(red: 0.56, green: 0.25, blue: 0.14, alpha: 0.8))
+                let outlineColor = isDark
+                    ? UIColor(red: 0.31, green: 0.25, blue: 0.21, alpha: 0.8)
+                    : UIColor(red: 0.56, green: 0.25, blue: 0.14, alpha: 0.8)
+                outline.lineColor = NSExpression(forConstantValue: outlineColor)
                 outline.lineWidth = NSExpression(forConstantValue: 0.55)
                 insertIraqBuildingLayer(outline, into: style)
 
@@ -187,7 +217,10 @@ struct OttuMapView: UIViewRepresentable {
                     let extrusion = MLNFillExtrusionStyleLayer(identifier: "ottu-iraq-buildings-3d-\(key)", source: source)
                     extrusion.fillExtrusionHeight = NSExpression(forKeyPath: "height")
                     extrusion.fillExtrusionBase = NSExpression(forConstantValue: 0)
-                    extrusion.fillExtrusionColor = NSExpression(forConstantValue: UIColor(red: 0.91, green: 0.43, blue: 0.22, alpha: 1))
+                    let extrusionColor = isDark
+                        ? UIColor(red: 0.43, green: 0.34, blue: 0.29, alpha: 1)
+                        : UIColor(red: 0.91, green: 0.43, blue: 0.22, alpha: 1)
+                    extrusion.fillExtrusionColor = NSExpression(forConstantValue: extrusionColor)
                     extrusion.fillExtrusionOpacity = NSExpression(forConstantValue: 0.86)
                     extrusion.predicate = NSPredicate(format: "height > 0")
                     insertIraqBuildingLayer(extrusion, into: style)
@@ -232,18 +265,52 @@ struct OttuMapView: UIViewRepresentable {
             mapView.setCamera(camera, animated: animated)
         }
 
-        private func applyFeatureColors(to style: MLNStyle?) {
+        private func applyFeatureColors(to style: MLNStyle?, isDark: Bool) {
             guard let style else { return }
 
-            let building = UIColor(red: 0.91, green: 0.56, blue: 0.31, alpha: 1)
-            let water = UIColor(red: 0.20, green: 0.60, blue: 0.91, alpha: 1)
-            let park = UIColor(red: 0.31, green: 0.71, blue: 0.47, alpha: 1)
-            let forest = UIColor(red: 0.16, green: 0.48, blue: 0.32, alpha: 1)
-            let grass = UIColor(red: 0.61, green: 0.80, blue: 0.39, alpha: 1)
-            let majorRoad = UIColor(red: 0.97, green: 0.49, blue: 0.25, alpha: 1)
-            let primaryRoad = UIColor(red: 0.98, green: 0.70, blue: 0.28, alpha: 1)
-            let localRoad = UIColor(red: 0.80, green: 0.84, blue: 0.88, alpha: 1)
-            let aeroway = UIColor(red: 0.68, green: 0.48, blue: 0.86, alpha: 1)
+            let building = isDark
+                ? UIColor(red: 0.38, green: 0.40, blue: 0.39, alpha: 1)
+                : UIColor(red: 0.91, green: 0.56, blue: 0.31, alpha: 1)
+            let water = isDark
+                ? UIColor(red: 0.25, green: 0.43, blue: 0.52, alpha: 1)
+                : UIColor(red: 0.20, green: 0.60, blue: 0.91, alpha: 1)
+            let park = isDark
+                ? UIColor(red: 0.28, green: 0.38, blue: 0.32, alpha: 1)
+                : UIColor(red: 0.31, green: 0.71, blue: 0.47, alpha: 1)
+            let forest = isDark
+                ? UIColor(red: 0.22, green: 0.31, blue: 0.26, alpha: 1)
+                : UIColor(red: 0.16, green: 0.48, blue: 0.32, alpha: 1)
+            let grass = isDark
+                ? UIColor(red: 0.36, green: 0.40, blue: 0.31, alpha: 1)
+                : UIColor(red: 0.61, green: 0.80, blue: 0.39, alpha: 1)
+            let majorRoad = isDark
+                ? UIColor(red: 0.68, green: 0.45, blue: 0.34, alpha: 1)
+                : UIColor(red: 0.97, green: 0.49, blue: 0.25, alpha: 1)
+            let primaryRoad = isDark
+                ? UIColor(red: 0.66, green: 0.59, blue: 0.43, alpha: 1)
+                : UIColor(red: 0.98, green: 0.70, blue: 0.28, alpha: 1)
+            let localRoad = isDark
+                ? UIColor(red: 0.46, green: 0.49, blue: 0.50, alpha: 1)
+                : UIColor(red: 0.80, green: 0.84, blue: 0.88, alpha: 1)
+            let aeroway = isDark
+                ? UIColor(red: 0.46, green: 0.40, blue: 0.52, alpha: 1)
+                : UIColor(red: 0.68, green: 0.48, blue: 0.86, alpha: 1)
+
+            if isDark {
+                let background = UIColor(red: 0.11, green: 0.12, blue: 0.13, alpha: 1)
+                let label = UIColor(red: 0.88, green: 0.87, blue: 0.84, alpha: 1)
+                for layer in style.layers {
+                    if let backgroundLayer = layer as? MLNBackgroundStyleLayer {
+                        backgroundLayer.backgroundColor = NSExpression(forConstantValue: background)
+                    }
+                    guard let symbolLayer = layer as? MLNSymbolStyleLayer,
+                          symbolLayer.textField != nil else { continue }
+                    symbolLayer.textColor = NSExpression(forConstantValue: label)
+                    symbolLayer.textHaloColor = NSExpression(forConstantValue: background)
+                    symbolLayer.textHaloWidth = NSExpression(forConstantValue: 1.15)
+                    symbolLayer.textHaloBlur = NSExpression(forConstantValue: 0.25)
+                }
+            }
 
             setFillColor(building, on: "building", in: style)
             setFillColor(water, on: "water", in: style)
@@ -286,7 +353,7 @@ struct OttuMapView: UIViewRepresentable {
             layer.lineColor = NSExpression(forConstantValue: color)
         }
 
-        private func ensureBuildingExtrusion(in style: MLNStyle?) {
+        private func ensureBuildingExtrusion(in style: MLNStyle?, isDark: Bool) {
             guard let style,
                   style.layer(withIdentifier: "building-3d") == nil,
                   style.layer(withIdentifier: "ottu-building-extrusion") == nil,
@@ -297,7 +364,10 @@ struct OttuMapView: UIViewRepresentable {
             extrusion.sourceLayerIdentifier = "building"
             extrusion.fillExtrusionBase = NSExpression(forKeyPath: "render_min_height")
             extrusion.fillExtrusionHeight = NSExpression(forKeyPath: "render_height")
-            extrusion.fillExtrusionColor = NSExpression(forConstantValue: UIColor(red: 0.91, green: 0.56, blue: 0.31, alpha: 1))
+            let buildingColor = isDark
+                ? UIColor(red: 0.38, green: 0.40, blue: 0.39, alpha: 1)
+                : UIColor(red: 0.91, green: 0.56, blue: 0.31, alpha: 1)
+            extrusion.fillExtrusionColor = NSExpression(forConstantValue: buildingColor)
             extrusion.fillExtrusionOpacity = NSExpression(forConstantValue: 0.92)
             style.insertLayer(extrusion, above: buildingLayer)
         }

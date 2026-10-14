@@ -4,6 +4,7 @@ enum MapNavigationTab: String, CaseIterable, Identifiable {
     case location
     case categories
     case settings
+    case assistant
 
     var id: String { rawValue }
 
@@ -12,6 +13,7 @@ enum MapNavigationTab: String, CaseIterable, Identifiable {
         case .location: "location.my_location"
         case .categories: "navigation.categories"
         case .settings: "navigation.settings"
+        case .assistant: "navigation.assistant"
         }
     }
 
@@ -20,6 +22,7 @@ enum MapNavigationTab: String, CaseIterable, Identifiable {
         case .location: "IconlyLocation"
         case .categories: "IconlyCategory"
         case .settings: "IconlySetting"
+        case .assistant: "sparkles"
         }
     }
 }
@@ -38,11 +41,11 @@ struct FloatingGlassNavigationBar: View {
     }
 
     private var selectedColor: Color {
-        colorScheme == .dark ? .white : Color(red: 0.08, green: 0.08, blue: 0.10)
+        .black
     }
 
     private var unselectedColor: Color {
-        colorScheme == .dark ? .white.opacity(0.68) : Color.black.opacity(0.56)
+        .gray
     }
 
     private var opaqueSurfaceColor: Color {
@@ -102,15 +105,25 @@ struct FloatingGlassNavigationBar: View {
                             .matchedGeometryEffect(id: "selected-tab-glass", in: selectionAnimation)
                     }
 
-                    Image(tab.icon)
-                        .renderingMode(.template)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 18, height: 18)
-                        .foregroundStyle(foreground)
-                        .symbolEffect(.bounce, value: isSelected)
-                        .contentTransition(.symbolEffect(.replace))
-                        .scaleEffect(isSelected ? 1.04 : 1)
+                    if tab == .assistant {
+                        Image(systemName: tab.icon)
+                            .font(.system(size: 18, weight: .regular))
+                            .frame(width: 18, height: 18)
+                            .foregroundStyle(foreground)
+                            .symbolEffect(.bounce, value: isSelected)
+                            .contentTransition(.symbolEffect(.replace))
+                            .scaleEffect(isSelected ? 1.04 : 1)
+                    } else {
+                        Image(tab.icon)
+                            .renderingMode(.template)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 18, height: 18)
+                            .foregroundStyle(foreground)
+                            .symbolEffect(.bounce, value: isSelected)
+                            .contentTransition(.symbolEffect(.replace))
+                            .scaleEffect(isSelected ? 1.04 : 1)
+                    }
                 }
                 .frame(width: 50, height: 50)
 
@@ -134,11 +147,10 @@ struct FloatingGlassNavigationBar: View {
         if normalizedGlassIntensity > 0 {
 #if compiler(>=6.2)
             if #available(iOS 26.0, *), useNativeGlass {
-                decoratedGlassSurface(
-                    Circle()
-                        .fill(.clear)
-                        .glassEffect(.regular, in: Circle())
-                )
+                Circle()
+                    .fill(.clear)
+                    .glassEffect(.regular.interactive(), in: Circle())
+                    .opacity(normalizedGlassIntensity)
             } else {
                 fallbackGlassSurface
             }

@@ -13,7 +13,7 @@ struct PhotonPlaceSearchService: PlaceSearchProviding {
             URLQueryItem(name: "q", value: query),
             URLQueryItem(name: "lat", value: String(coordinate.latitude)),
             URLQueryItem(name: "lon", value: String(coordinate.longitude)),
-            URLQueryItem(name: "limit", value: "8")
+            URLQueryItem(name: "limit", value: "20")
         ]
         // Photon currently supports only default, de, en, and fr. Sending ar/ku
         // makes the API return HTTP 400 even though the device is online.

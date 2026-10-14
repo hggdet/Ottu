@@ -12,6 +12,7 @@ struct MapHomeView: View {
 
     @State private var query = ""
     @State private var results: [Place] = []
+    @State private var isSearchExpanded = false
     @State private var activeSheet: HomeSheet?
     @State private var isSettingsPresented = false
     @State private var placeToShowAfterSettings: Place?
@@ -34,6 +35,7 @@ struct MapHomeView: View {
     @FocusState private var searchFocused: Bool
 
     private let searchService: any PlaceSearchProviding = PhotonPlaceSearchService()
+    private let assistantService: any MapAssistantProviding = OpenStreetMapAssistantService()
     private let routeService: any RoutingProviding = OSRMRouteService()
 
     private var currentLanguage: String {
@@ -84,10 +86,13 @@ struct MapHomeView: View {
             .padding(.bottom, 8)
         }
         .overlay(alignment: .top) {
-            searchPanel
-                .frame(maxWidth: .infinity, alignment: .top)
-                .padding(.horizontal, 14)
-                .padding(.top, 8)
+            GeometryReader { geometry in
+                searchPanel(maxResultsHeight: max(180, geometry.size.height - 180))
+                    .frame(maxWidth: .infinity, alignment: .top)
+                    .padding(.horizontal, 14)
+                    .padding(.top, 8)
+            }
+            .zIndex(10)
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             FloatingGlassNavigationBar(
@@ -108,7 +113,9 @@ struct MapHomeView: View {
             locateWhenReady = false
             focusMap(on: coordinate, named: AppLocalization.string("location.current", locale: locale))
         }
-        .sheet(item: $activeSheet) { sheet in
+        .sheet(item: $activeSheet, onDismiss: {
+            if selectedTab == .assistant { selectedTab = .location }
+        }) { sheet in
             sheetContent(for: sheet)
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
@@ -150,7 +157,7 @@ struct MapHomeView: View {
         }
     }
 
-    private var searchPanel: some View {
+    private func searchPanel(maxResultsHeight: CGFloat) -> some View {
         VStack(spacing: 8) {
             HStack(spacing: 10) {
                 Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
@@ -181,14 +188,35 @@ struct MapHomeView: View {
             .clipShape(Capsule())
             .shadow(color: .black.opacity(0.12), radius: 12, y: 4)
             if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                resultsPanel
-                    .transition(.move(edge: .top).combined(with: .opacity))
+                resultsPanel(maxHeight: maxResultsHeight)
+                    .transition(.opacity)
             }
         }
-        .animation(.easeInOut(duration: 0.2), value: results.count)
+        .animation(.easeInOut(duration: 0.2), value: isSearchExpanded)
+        .zIndex(10)
     }
 
-    private var resultsPanel: some View {
+    private func resultsPanel(maxHeight: CGFloat) -> some View {
+        Group {
+            if isSearchExpanded {
+                ScrollView(.vertical) {
+                    resultsContent
+                }
+                .scrollIndicators(.visible)
+                .scrollBounceBehavior(.basedOnSize)
+                .frame(height: maxHeight)
+            } else {
+                resultsContent
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .shadow(color: .black.opacity(0.1), radius: 12, y: 4)
+    }
+
+    @ViewBuilder
+    private var resultsContent: some View {
         VStack(spacing: 0) {
             if let searchErrorMessage {
                 searchFailureRow(searchErrorMessage)
@@ -210,16 +238,14 @@ struct MapHomeView: View {
                         .padding(16)
                 }
             } else {
-                ForEach(results) { place in
+                let visibleResults = isSearchExpanded ? results : Array(results.prefix(5))
+                ForEach(visibleResults) { place in
                     Button {
                         searchFocused = false
                         focusedPlace = place
                         activeSheet = .place(place)
                     } label: {
-                        HStack(spacing: 12) {
-                            Image(systemName: isLocal(place) ? "mappin.and.ellipse" : "mappin.circle.fill")
-                                .font(.title3)
-                                .foregroundStyle(.tint)
+                        HStack(spacing: 10) {
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(place.name)
                                     .font(.body.weight(.medium))
@@ -239,19 +265,36 @@ struct MapHomeView: View {
                             }
                         }
                         .padding(.horizontal, 16)
+                        .padding(.vertical, 9)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    if place.id != visibleResults.last?.id || results.count > 5 {
+                        Divider().padding(.leading, 16)
+                    }
+                }
+                if results.count > 5 {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            isSearchExpanded.toggle()
+                        }
+                    } label: {
+                        HStack {
+                            Text(AppLocalization.string(isSearchExpanded ? "search.less" : "search.more", locale: locale))
+                                .font(.subheadline.weight(.semibold))
+                            Spacer()
+                            Image(systemName: isSearchExpanded ? "chevron.up" : "chevron.down")
+                                .font(.caption.weight(.semibold))
+                        }
+                        .foregroundStyle(.tint)
+                        .padding(.horizontal, 16)
                         .padding(.vertical, 11)
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    if place.id != results.last?.id { Divider().padding(.leading, 48) }
                 }
             }
         }
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .shadow(color: .black.opacity(0.1), radius: 12, y: 4)
-        .fixedSize(horizontal: false, vertical: results.isEmpty)
-        .frame(maxHeight: results.isEmpty ? nil : 280)
     }
 
     private func searchFailureRow(_ message: String) -> some View {
@@ -384,6 +427,26 @@ struct MapHomeView: View {
                 },
                 onDismiss: { activeSheet = nil }
             )
+        case .assistant:
+            MapAssistantView(
+                userCoordinate: locationManager.coordinate,
+                mapCenter: mapCenter,
+                language: currentLanguage,
+                locale: locale,
+                searchService: searchService,
+                assistantService: assistantService,
+                onRequestLocation: { locationManager.requestLocation() },
+                onSelectPlace: { place in
+                    searchFocused = false
+                    query = ""
+                    selectedTab = .location
+                    activeSheet = .place(place)
+                    routeTask?.cancel()
+                    routePlan = nil
+                    routeTarget = nil
+                    focusedPlace = place
+                }
+            )
         }
     }
 
@@ -400,6 +463,10 @@ struct MapHomeView: View {
             searchFocused = false
             activeSheet = nil
             isSettingsPresented = true
+        case .assistant:
+            searchFocused = false
+            if locationManager.coordinate == nil { locationManager.requestLocation() }
+            activeSheet = .assistant
         }
     }
 
@@ -408,37 +475,40 @@ struct MapHomeView: View {
         guard searchTaskKey == taskKey else { return }
         let text = rawQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         results = []
+        isSearchExpanded = false
         searchErrorMessage = nil
         guard text.count >= 2 else {
             isSearching = false
             return
         }
         isSearching = true
+        let localMatches = (localStore.savedPlaces + localStore.communityPlaces).filter {
+            $0.name.localizedCaseInsensitiveContains(text) || $0.subtitle.localizedCaseInsensitiveContains(text)
+        }
+        var localIDs = Set<String>()
+        results = localMatches.filter { localIDs.insert($0.id).inserted }.prefix(20).map { $0 }
         defer {
             if searchTaskKey == taskKey {
                 isSearching = false
             }
         }
         do {
-            try await Task.sleep(nanoseconds: 350_000_000)
+            try await Task.sleep(nanoseconds: 180_000_000)
         } catch { return }
         guard !Task.isCancelled,
               searchTaskKey == taskKey,
               query.trimmingCharacters(in: .whitespacesAndNewlines) == text else { return }
 
-        let localMatches = (localStore.savedPlaces + localStore.communityPlaces).filter {
-            $0.name.localizedCaseInsensitiveContains(text) || $0.subtitle.localizedCaseInsensitiveContains(text)
-        }
         do {
             let remote = try await searchService.search(text, near: mapCenter, language: currentLanguage)
             guard !Task.isCancelled, searchTaskKey == taskKey else { return }
             var seen = Set<String>()
-            results = (localMatches + remote).filter { seen.insert($0.id).inserted }.prefix(8).map { $0 }
+            results = (localMatches + remote).filter { seen.insert($0.id).inserted }.prefix(20).map { $0 }
         } catch is CancellationError {
             return
         } catch {
             guard !Task.isCancelled, searchTaskKey == taskKey else { return }
-            results = Array(localMatches.prefix(8))
+            results = Array(results.prefix(20))
             searchErrorMessage = localizedSearchFailure(for: error)
         }
     }
@@ -507,6 +577,7 @@ private enum HomeSheet: Identifiable {
     case addPlace(GeoCoordinate)
     case report(GeoCoordinate)
     case categories
+    case assistant
 
     var id: String {
         switch self {
@@ -515,6 +586,7 @@ private enum HomeSheet: Identifiable {
         case .addPlace(let coordinate): return "add-\(coordinate.latitude)-\(coordinate.longitude)"
         case .report(let coordinate): return "report-\(coordinate.latitude)-\(coordinate.longitude)"
         case .categories: return "categories"
+        case .assistant: return "assistant"
         }
     }
 }
