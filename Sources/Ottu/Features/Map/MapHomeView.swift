@@ -101,8 +101,8 @@ struct MapHomeView: View {
                 onSelect: selectNavigationTab
             )
                 .padding(.horizontal, 24)
-                .padding(.top, 10)
-                .padding(.bottom, 8)
+                .padding(.top, 8)
+                .padding(.bottom, 6)
         }
         .task(id: searchTaskKey) {
             let taskKey = searchTaskKey

@@ -2,8 +2,8 @@ import SwiftUI
 
 enum MapNavigationTab: String, CaseIterable, Identifiable {
     case location
-    case categories
     case assistant
+    case categories
     case settings
 
     var id: String { rawValue }
@@ -11,18 +11,18 @@ enum MapNavigationTab: String, CaseIterable, Identifiable {
     var titleKey: String {
         switch self {
         case .location: "location.my_location"
+        case .assistant: "navigation.assistant"
         case .categories: "navigation.categories"
         case .settings: "navigation.settings"
-        case .assistant: "navigation.assistant"
         }
     }
 
     var icon: String {
         switch self {
         case .location: "CurvedLocation"
+        case .assistant: "CurvedAssistant"
         case .categories: "CurvedCategories"
         case .settings: "CurvedSettings"
-        case .assistant: "CurvedAssistant"
         }
     }
 }
@@ -45,7 +45,7 @@ struct FloatingGlassNavigationBar: View {
     }
 
     private var selectedTextColor: Color {
-        .black
+        .primary
     }
 
     private var unselectedColor: Color {
@@ -75,27 +75,27 @@ struct FloatingGlassNavigationBar: View {
     }
 
     private func navigationBar(useNativeGlass: Bool) -> some View {
-        HStack(spacing: 2) {
+        HStack(spacing: 0) {
             ForEach(MapNavigationTab.allCases) { tab in
                 tabButton(for: tab)
             }
         }
-        .padding(5)
+        .padding(4)
         .background {
             capsuleSurface(useNativeGlass: useNativeGlass)
         }
         .overlay {
             Capsule()
                 .strokeBorder(
-                    Color.white.opacity(colorScheme == .dark ? 0.22 : 0.64),
+                    Color.white.opacity(colorScheme == .dark ? 0.14 : 0.38),
                     lineWidth: 1
                 )
                 .allowsHitTesting(false)
         }
         .clipShape(Capsule())
         .shadow(
-            color: Color.black.opacity(colorScheme == .dark ? 0.28 : 0.12),
-            radius: 9,
+            color: Color.black.opacity(colorScheme == .dark ? 0.22 : 0.09),
+            radius: 12,
             x: 0,
             y: 3
         )
@@ -107,24 +107,24 @@ struct FloatingGlassNavigationBar: View {
         let title = AppLocalization.string(tab.titleKey, locale: locale)
 
         return Button {
-            withAnimation(.spring(response: 0.48, dampingFraction: 0.82, blendDuration: 0.1)) {
+            withAnimation(.spring(response: 0.34, dampingFraction: 0.86, blendDuration: 0.06)) {
                 selection = tab
             }
             onSelect(tab)
         } label: {
             VStack(spacing: 4) {
                 tabIcon(for: tab)
-                    .frame(width: 20, height: 20)
+                    .frame(width: 22, height: 22)
 
                 Text(title)
-                    .font(.system(size: 10.5, weight: isSelected ? .semibold : .regular, design: .rounded))
+                    .font(.system(size: 10.5, weight: isSelected ? .semibold : .regular))
                     .foregroundStyle(foreground)
                     .lineLimit(1)
                     .minimumScaleFactor(0.72)
                     .frame(maxWidth: .infinity)
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 58)
+            .frame(height: 60)
             .contentShape(Capsule())
             .background {
                 if isSelected {
@@ -174,25 +174,10 @@ struct FloatingGlassNavigationBar: View {
     private var fallbackGlassSurface: some View {
         Capsule()
             .fill(.ultraThinMaterial)
-            .overlay {
-                Capsule().fill(glassHighlight)
-            }
             .opacity(normalizedGlassIntensity)
     }
 
-    private var glassHighlight: LinearGradient {
-        LinearGradient(
-            colors: [
-                Color.white.opacity(colorScheme == .dark ? 0.24 : 0.68),
-                Color.white.opacity(colorScheme == .dark ? 0.08 : 0.24),
-                Color.black.opacity(colorScheme == .dark ? 0.20 : 0.06)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-
     private var selectionHighlightColor: Color {
-        colorScheme == .dark ? .white.opacity(0.62) : .black.opacity(0.055)
+        colorScheme == .dark ? .black.opacity(0.24) : .black.opacity(0.055)
     }
 }
