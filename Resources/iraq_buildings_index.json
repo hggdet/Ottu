@@ -1,0 +1,649 @@
+{
+  "release": "2026-08-13",
+  "license": "CDLA-Permissive-2.0",
+  "totalBytes": 723656811,
+  "tiles": [
+    {
+      "quadKey": "122111233",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122111233/part-00185-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 1153434,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122111320",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122111320/part-00014-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 1992294,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122111321",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122111321/part-00182-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 997888,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122111322",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122111322/part-00165-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 11848909,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122111323",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122111323/part-00154-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 13736346,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122111330",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122111330/part-00192-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 30208,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122111331",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122111331/part-00150-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 5837,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122111332",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122111332/part-00007-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 7969178,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122111333",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122111333/part-00049-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 5347738,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122112313",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122112313/part-00056-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 26931,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122112331",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122112331/part-00074-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 47616,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122112333",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122112333/part-00070-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 356,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122113010",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122113010/part-00012-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 187392,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122113011",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122113011/part-00155-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 7025459,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122113013",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122113013/part-00086-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 532480,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122113031",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122113031/part-00000-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 3686,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122113032",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122113032/part-00043-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 3040870,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122113033",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122113033/part-00079-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 350,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122113100",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122113100/part-00088-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 6920602,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122113101",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122113101/part-00087-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 36280730,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122113102",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122113102/part-00090-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 926208,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122113103",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122113103/part-00193-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 10380902,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122113110",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122113110/part-00020-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 35651584,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122113111",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122113111/part-00029-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 8703181,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122113112",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122113112/part-00029-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 6501171,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122113113",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122113113/part-00011-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 12582912,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122113120",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122113120/part-00097-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 20173,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122113121",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122113121/part-00038-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 6186598,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122113122",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122113122/part-00112-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 1229,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122113123",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122113123/part-00072-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 1153434,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122113130",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122113130/part-00159-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 5662310,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122113131",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122113131/part-00018-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 19398656,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122113132",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122113132/part-00078-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 7654605,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122113133",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122113133/part-00014-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 5452595,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122113201",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122113201/part-00190-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 25702,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122113202",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122113202/part-00043-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 77210,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122113210",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122113210/part-00189-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 146739,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122113220",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122113220/part-00159-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 152371,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122113221",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122113221/part-00170-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 1229,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122113222",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122113222/part-00013-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 2253,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122113223",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122113223/part-00149-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 792,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122113232",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122113232/part-00106-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 2048,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122113233",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122113233/part-00067-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 2867,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122113300",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122113300/part-00125-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 929690,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122113301",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122113301/part-00079-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 45056,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122113302",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122113302/part-00058-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 2306867,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122113303",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122113303/part-00166-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 13631488,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122113310",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122113310/part-00035-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 11219763,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122113311",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122113311/part-00126-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 20656947,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122113312",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122113312/part-00155-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 35022438,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122113313",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122113313/part-00143-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 128345702,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122113321",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122113321/part-00103-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 5939,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122113330",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122113330/part-00145-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 24956109,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122113331",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122113331/part-00111-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 20971520,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122113332",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122113332/part-00004-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 6710886,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122113333",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122113333/part-00164-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 57566822,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122131001",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122131001/part-00100-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 1741,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122131010",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122131010/part-00016-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 38912,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122131011",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122131011/part-00105-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 31334,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122131013",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122131013/part-00112-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 5939,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122131102",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122131102/part-00029-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 967,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122131110",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122131110/part-00182-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 161997,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122131111",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122131111/part-00081-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 9961472,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122131113",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122131113/part-00042-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 64000,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122131120",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122131120/part-00167-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 4506,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122131121",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122131121/part-00176-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 2560,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122131123",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122131123/part-00188-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 308,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122131132",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122131132/part-00040-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 311,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "122131311",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=122131311/part-00144-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 5427,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "123000222",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=123000222/part-00091-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 77210,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "123002000",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=123002000/part-00090-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 1992294,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "123002002",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=123002002/part-00098-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 13107200,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "123002003",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=123002003/part-00086-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 1048576,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "123002020",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=123002020/part-00023-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 123085,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "123002021",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=123002021/part-00088-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 3789,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "123002022",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=123002022/part-00030-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 8493466,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "123002023",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=123002023/part-00181-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 210,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "123002200",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=123002200/part-00185-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 3879731,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "123002202",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=123002202/part-00024-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 1572864,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "123002203",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=123002203/part-00045-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 142643,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "123002220",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=123002220/part-00065-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 4823450,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "123002221",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=123002221/part-00126-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 1782579,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "123002222",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=123002222/part-00035-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 4089446,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "123002223",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=123002223/part-00021-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 11534336,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "123002230",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=123002230/part-00068-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 18125,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "123002232",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=123002232/part-00004-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 1468006,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "123002233",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=123002233/part-00048-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 253030,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "123020000",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=123020000/part-00127-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 6710886,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "123020001",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=123020001/part-00182-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 13316915,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "123020002",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=123020002/part-00125-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 7235174,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "123020003",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=123020003/part-00112-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 12478054,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "123020010",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=123020010/part-00026-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 2621440,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "123020011",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=123020011/part-00080-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 12897485,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "123020012",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=123020012/part-00144-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 7969178,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "123020013",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=123020013/part-00098-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 11639194,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "123020021",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=123020021/part-00182-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 7680,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "123020030",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=123020030/part-00174-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 71987,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "123020031",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=123020031/part-00181-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 27053261,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "123020033",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=123020033/part-00053-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 1048576,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "123020100",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=123020100/part-00028-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 706,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "123020102",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=123020102/part-00054-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 52019,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "123020120",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=123020120/part-00013-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 13631488,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "123020122",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=123020122/part-00155-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 1992294,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "123020123",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=123020123/part-00022-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 29389,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "123020200",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=123020200/part-00097-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 3994,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "123020201",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=123020201/part-00107-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 1741,
+      "uploadDate": "2026-08-13"
+    },
+    {
+      "quadKey": "123020210",
+      "url": "https://bfppub.z5.web.core.windows.net/2026-08-13/global-buildings.geojsonl/RegionName=Iraq/quadkey=123020210/part-00020-110f5303-ff85-4c71-a2bf-c6070024fec8.c000.csv.gz",
+      "sizeBytes": 1536,
+      "uploadDate": "2026-08-13"
+    }
+  ]
+}

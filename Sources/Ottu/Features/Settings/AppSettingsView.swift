@@ -5,9 +5,11 @@ struct AppSettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Binding var selectedLanguage: String
     @ObservedObject var locationManager: UserLocationManager
+    @ObservedObject var iraqBuildingsManager: IraqBuildingFootprintsManager
     @AppStorage("ottu.distanceUnit") private var distanceUnit = "km"
     @AppStorage("ottu.appearance") private var selectedAppearance = "system"
     @AppStorage("ottu.liquidGlassIntensity") private var liquidGlassIntensity = 1.0
+    @AppStorage("ottu.mapDisplayMode") private var mapDisplayMode = "2d"
     @State private var isWaitingForLocation = false
     @State private var requestedLocationUpdateID = 0
     @State private var locationRequestTimeout: Task<Void, Never>?
@@ -55,6 +57,14 @@ struct AppSettingsView: View {
                     Label(AppLocalization.string("settings.appearance.light", locale: interfaceLocale), systemImage: "sun.max").tag("light")
                     Label(AppLocalization.string("settings.appearance.dark", locale: interfaceLocale), systemImage: "moon").tag("dark")
                 }
+
+                Picker(selection: $mapDisplayMode, label: Text(AppLocalization.string("settings.map_display", locale: interfaceLocale))) {
+                    Label(AppLocalization.string("settings.map_display.2d", locale: interfaceLocale), systemImage: "map").tag("2d")
+                    Label(AppLocalization.string("settings.map_display.3d", locale: interfaceLocale), systemImage: "view.3d").tag("3d")
+                }
+                Text(AppLocalization.string("settings.map_display_hint", locale: interfaceLocale))
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
 
                 Section {
                     Button(action: shareCurrentLocation) {
@@ -111,6 +121,7 @@ struct AppSettingsView: View {
                 NavigationLink {
                     OfflineMapsSettingsView(
                         manager: offlineManager,
+                        iraqBuildings: iraqBuildingsManager,
                         mapCenter: mapCenter,
                         isDark: isDark
                     )
@@ -124,6 +135,11 @@ struct AppSettingsView: View {
                             .scaledToFit()
                             .frame(width: 18, height: 18)
                     }
+                }
+                NavigationLink {
+                    AboutView()
+                } label: {
+                    Label(AppLocalization.string("settings.about", locale: interfaceLocale), systemImage: "info.circle")
                 }
                 Link(destination: URL(string: "mailto:pbgpfk7ofwz729ekxamzqk@onmanus.ai")!) {
                     Label(AppLocalization.string("settings.contact_report", locale: interfaceLocale), systemImage: "envelope")
@@ -280,10 +296,12 @@ private struct LocationActivitySheet: UIViewControllerRepresentable {
 private struct OfflineMapsSettingsView: View {
     @Environment(\.locale) private var locale
     @ObservedObject var manager: OfflineMapManager
+    @ObservedObject var iraqBuildings: IraqBuildingFootprintsManager
     let mapCenter: GeoCoordinate
     let isDark: Bool
 
     @State private var confirmRemove = false
+    @State private var confirmRemoveIraq = false
 
     var body: some View {
         Form {
@@ -331,6 +349,66 @@ private struct OfflineMapsSettingsView: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
+
+            Section {
+                Toggle(isOn: $iraqBuildings.isVisible) {
+                    AppLocalizedText("iraq.show")
+                }
+                .disabled(!iraqBuildings.hasDownloadedTiles)
+
+                AppLocalizedText("iraq.description")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                AppLocalizedText("iraq.zoom_hint")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                LabeledContent {
+                    Text("\(iraqBuildings.completedTileCount)/\(iraqBuildings.totalTileCount) · \(iraqBuildings.formattedDownloadedSize) / \(iraqBuildings.formattedTotalSize)")
+                        .font(.footnote.monospacedDigit())
+                        .multilineTextAlignment(.trailing)
+                } label: {
+                    AppLocalizedText("iraq.storage")
+                }
+
+                if iraqBuildings.hasDownloadedTiles {
+                    ProgressView(value: iraqBuildings.downloadProgress)
+                }
+
+                Button {
+                    if iraqBuildings.isDownloading {
+                        iraqBuildings.cancelDownload()
+                    } else {
+                        iraqBuildings.downloadIraq()
+                    }
+                } label: {
+                    AppLocalizedLabel(
+                        iraqBuildings.isDownloading ? "iraq.cancel_download" : (iraqBuildings.isComplete ? "iraq.downloaded" : (iraqBuildings.hasDownloadedTiles ? "iraq.resume" : "iraq.download")),
+                        systemImage: iraqBuildings.isDownloading ? "pause.circle" : "arrow.down.circle"
+                    )
+                }
+                .disabled(iraqBuildings.isComplete || iraqBuildings.totalTileCount == 0)
+
+                if let statusKey = iraqBuildings.statusKey {
+                    AppLocalizedText(statusKey)
+                        .font(.footnote)
+                        .foregroundStyle(iraqBuildings.failedTileCount > 0 ? .orange : .secondary)
+                }
+
+                if iraqBuildings.hasDownloadedTiles {
+                    Button(role: .destructive) {
+                        confirmRemoveIraq = true
+                    } label: {
+                        AppLocalizedLabel("iraq.remove", systemImage: "trash")
+                    }
+                    .disabled(iraqBuildings.isDownloading)
+                }
+            } header: {
+                AppLocalizedText("iraq.section")
+            }
         }
         .navigationTitle(Text(AppLocalization.string("settings.offline_maps", locale: locale)))
         .navigationBarTitleDisplayMode(.inline)
@@ -349,6 +427,21 @@ private struct OfflineMapsSettingsView: View {
             }
         } message: {
             AppLocalizedText("offline.remove_confirmation_message")
+        }
+        .alert(
+            Text(AppLocalization.string("iraq.remove_title", locale: locale)),
+            isPresented: $confirmRemoveIraq
+        ) {
+            Button(role: .destructive) {
+                iraqBuildings.removeIraqPackage()
+            } label: {
+                AppLocalizedText("iraq.remove")
+            }
+            Button(role: .cancel) { } label: {
+                AppLocalizedLabel("common.cancel", systemImage: "xmark")
+            }
+        } message: {
+            AppLocalizedText("iraq.remove_message")
         }
     }
 }

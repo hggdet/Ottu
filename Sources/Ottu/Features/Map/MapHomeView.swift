@@ -8,6 +8,7 @@ struct MapHomeView: View {
     @StateObject private var localStore = LocalDataStore()
     @StateObject private var locationManager = UserLocationManager()
     @StateObject private var offlineManager = OfflineMapManager()
+    @StateObject private var iraqBuildingsManager = IraqBuildingFootprintsManager()
 
     @State private var query = ""
     @State private var results: [Place] = []
@@ -22,6 +23,7 @@ struct MapHomeView: View {
     @State private var selectedTab: MapNavigationTab = .location
     @State private var searchRetryToken = 0
     @State private var searchErrorMessage: String?
+    @AppStorage("ottu.mapDisplayMode") private var mapDisplayMode = "2d"
     @AppStorage("ottu.liquidGlassIntensity") private var liquidGlassIntensity = 1.0
     @AppStorage("ottu.distanceUnit") private var distanceUnit = "km"
     @State private var isSearching = false
@@ -48,6 +50,8 @@ struct MapHomeView: View {
                 selectedPlace: focusedPlace,
                 route: routePlan,
                 styleURL: MapConfiguration.styleURL(isDark: colorScheme == .dark),
+                is3D: mapDisplayMode == "3d",
+                iraqBuildingsManager: iraqBuildingsManager,
                 onLongPress: { coordinate in
                     searchFocused = false
                     activeSheet = .addPlace(coordinate)
@@ -122,6 +126,7 @@ struct MapHomeView: View {
                 savedPlaces: localStore.savedPlaces,
                 communityPlaces: localStore.communityPlaces,
                 offlineManager: offlineManager,
+                iraqBuildingsManager: iraqBuildingsManager,
                 mapCenter: mapCenter,
                 isDark: colorScheme == .dark,
                 onSelectPlace: { place in

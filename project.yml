@@ -8,16 +8,22 @@ packages:
   MapLibre:
     url: https://github.com/maplibre/maplibre-gl-native-distribution
     revision: 13e41ab3d77ff5113e7e5d4ee87803b1f81f5683
+  SwiftGzip:
+    url: https://github.com/mihai8804858/swift-gzip
+    revision: 97c502f10283dbd80eda534d164b715c9c973d72
 targets:
   Ottu:
     type: application
     platform: iOS
     sources:
       - path: Sources/Ottu
+    resources:
       - path: Resources
     dependencies:
       - package: MapLibre
         product: MapLibre
+      - package: SwiftGzip
+        product: SwiftGzip
       - target: OttuWidget
         embed: true
     info:
