@@ -54,21 +54,21 @@ enum AssistantPlaceCategory: String, CaseIterable, Identifiable, Sendable {
         let point = "around:\(radius),\(coordinate.latitude),\(coordinate.longitude)"
         switch self {
         case .pharmacy:
-            "nwr[\"amenity\"=\"pharmacy\"](\(point));"
+            return "nwr[\"amenity\"=\"pharmacy\"](\(point));"
         case .restaurant:
-            "nwr[\"amenity\"=\"restaurant\"](\(point));"
+            return "nwr[\"amenity\"=\"restaurant\"](\(point));"
         case .cafe:
-            "nwr[\"amenity\"=\"cafe\"](\(point));"
+            return "nwr[\"amenity\"=\"cafe\"](\(point));"
         case .hospital:
-            "nwr[\"amenity\"=\"hospital\"](\(point));"
+            return "nwr[\"amenity\"=\"hospital\"](\(point));"
         case .fuel:
-            "nwr[\"amenity\"=\"fuel\"](\(point));"
+            return "nwr[\"amenity\"=\"fuel\"](\(point));"
         case .hotel:
-            "nwr[\"tourism\"=\"hotel\"](\(point));"
+            return "nwr[\"tourism\"=\"hotel\"](\(point));"
         case .park:
-            "nwr[\"leisure\"=\"park\"](\(point));"
+            return "nwr[\"leisure\"=\"park\"](\(point));"
         case .market:
-            """
+            return """
             nwr[\"shop\"~\"supermarket|convenience|mall\"](\(point));
             nwr[\"amenity\"=\"marketplace\"](\(point));
             """
