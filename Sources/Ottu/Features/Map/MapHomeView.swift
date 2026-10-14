@@ -123,10 +123,10 @@ struct MapHomeView: View {
             AppSettingsView(
                 selectedLanguage: $selectedLanguage,
                 locationManager: locationManager,
+                iraqBuildingsManager: iraqBuildingsManager,
                 savedPlaces: localStore.savedPlaces,
                 communityPlaces: localStore.communityPlaces,
                 offlineManager: offlineManager,
-                iraqBuildingsManager: iraqBuildingsManager,
                 mapCenter: mapCenter,
                 isDark: colorScheme == .dark,
                 onSelectPlace: { place in
