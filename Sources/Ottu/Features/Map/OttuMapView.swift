@@ -390,7 +390,7 @@ struct OttuMapView: UIViewRepresentable {
                 longitude: userLocationCoordinate.longitude
             )
             marker.centerOffset = parkedLocation.distance(from: currentLocation) < 15
-                ? CGPoint(x: 0, y: -42)
+                ? CGVector(dx: 0, dy: -42)
                 : .zero
         }
 
