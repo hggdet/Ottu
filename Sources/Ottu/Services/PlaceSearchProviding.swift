@@ -43,6 +43,8 @@ struct PhotonPlaceSearchService: PlaceSearchProviding {
                 id: "\(osmType)-\(osmID)",
                 name: name,
                 street: properties.street,
+                locality: properties.locality,
+                district: properties.district,
                 city: properties.city ?? properties.state,
                 country: properties.country,
                 coordinate: GeoCoordinate(
@@ -81,6 +83,8 @@ private struct PhotonResponse: Decodable {
     struct Properties: Decodable {
         let name: String?
         let street: String?
+        let locality: String?
+        let district: String?
         let city: String?
         let state: String?
         let country: String?
@@ -88,7 +92,7 @@ private struct PhotonResponse: Decodable {
         let osmType: String?
 
         enum CodingKeys: String, CodingKey {
-            case name, street, city, state, country
+            case name, street, locality, district, city, state, country
             case osmID = "osm_id"
             case osmType = "osm_type"
         }

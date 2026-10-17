@@ -15,6 +15,40 @@ final class PlaceTests: XCTestCase {
         XCTAssertEqual(place.subtitle, "Street 1، Baghdad")
     }
 
+    func testSubtitleIncludesLocalityAndDistrictWithoutAdjacentDuplicates() {
+        let place = Place(
+            id: "test-local-address",
+            name: "Test Place",
+            street: "شارع ١",
+            locality: "الكرادة",
+            district: "الكرادة",
+            city: "بغداد",
+            country: "العراق",
+            coordinate: GeoCoordinate(latitude: 33.3, longitude: 44.4)
+        )
+
+        XCTAssertEqual(place.subtitle, "شارع ١، الكرادة، بغداد، العراق")
+    }
+
+    func testLegacySavedPlaceDecodesWithoutLocalityOrDistrict() throws {
+        let json = """
+        {
+          "id": "legacy-place",
+          "name": "Legacy Place",
+          "street": "Street 1",
+          "city": "Baghdad",
+          "country": "Iraq",
+          "coordinate": { "latitude": 33.3, "longitude": 44.4 }
+        }
+        """
+
+        let place = try JSONDecoder().decode(Place.self, from: Data(json.utf8))
+
+        XCTAssertNil(place.locality)
+        XCTAssertNil(place.district)
+        XCTAssertEqual(place.subtitle, "Street 1، Baghdad، Iraq")
+    }
+
     func testShareURLContainsCoordinates() {
         let place = Place(
             id: "test-2",

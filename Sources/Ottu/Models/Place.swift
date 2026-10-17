@@ -33,14 +33,42 @@ struct Place: Codable, Hashable, Identifiable, Sendable {
     let id: String
     let name: String
     let street: String?
+    let locality: String?
+    let district: String?
     let city: String?
     let country: String?
     let coordinate: GeoCoordinate
 
+    init(
+        id: String,
+        name: String,
+        street: String?,
+        locality: String? = nil,
+        district: String? = nil,
+        city: String?,
+        country: String?,
+        coordinate: GeoCoordinate
+    ) {
+        self.id = id
+        self.name = name
+        self.street = street
+        self.locality = locality
+        self.district = district
+        self.city = city
+        self.country = country
+        self.coordinate = coordinate
+    }
+
     var subtitle: String {
-        [street, city, country]
-            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
+        var previousComponent: String?
+        return [street, locality, district, city, country]
+            .compactMap { component -> String? in
+                guard let value = component?.trimmingCharacters(in: .whitespacesAndNewlines),
+                      !value.isEmpty,
+                      value != previousComponent else { return nil }
+                previousComponent = value
+                return value
+            }
             .joined(separator: "، ")
     }
 
