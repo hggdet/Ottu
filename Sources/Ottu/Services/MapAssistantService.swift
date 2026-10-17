@@ -12,7 +12,7 @@ protocol MapAssistantProviding: Sendable {
     func nearbyStreet(at coordinate: GeoCoordinate, language: String) async throws -> String?
 }
 
-enum AssistantPlaceCategory: String, CaseIterable, Identifiable, Sendable {
+enum AssistantPlaceCategory: String, CaseIterable, Identifiable, Equatable, Sendable {
     case pharmacy
     case restaurant
     case cafe

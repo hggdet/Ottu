@@ -86,4 +86,41 @@ final class PlaceTests: XCTestCase {
         XCTAssertFalse(AppLocalization.isRightToLeft(Locale(identifier: "en")))
         XCTAssertEqual(AppLocalization.languageCode(for: Locale(identifier: "ckb")), "ku")
     }
+
+    func testParkedCarLocationPreservesCoordinateAndTimestampWhenEncoded() throws {
+        let location = ParkedCarLocation(
+            coordinate: GeoCoordinate(latitude: 33.3152, longitude: 44.3661),
+            savedAt: Date(timeIntervalSince1970: 1_800_000_000)
+        )
+
+        let data = try JSONEncoder().encode(location)
+        let decoded = try JSONDecoder().decode(ParkedCarLocation.self, from: data)
+
+        XCTAssertEqual(decoded, location)
+    }
+
+    func testMapAndParkedCarLabelsResolveInEverySupportedLanguage() {
+        let keys = [
+            "map.settings.app_language",
+            "search.clear_history",
+            "parked_car.save",
+            "parked_car.title",
+            "parked_car.saved_at",
+            "parked_car.walk_back",
+            "parked_car.delete",
+            "network.offline.pill.general",
+            "network.offline.pill.route"
+        ]
+
+        for language in ["ar", "en", "ku"] {
+            let locale = Locale(identifier: language)
+            for key in keys {
+                XCTAssertNotEqual(
+                    AppLocalization.string(key, locale: locale),
+                    key,
+                    "Missing \(key) translation for \(language)"
+                )
+            }
+        }
+    }
 }

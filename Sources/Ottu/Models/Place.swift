@@ -10,6 +10,25 @@ struct GeoCoordinate: Codable, Hashable, Sendable {
     }
 }
 
+enum QuickPlaceSlot: String, Codable, CaseIterable, Sendable {
+    case home
+    case work
+
+    var localizationKey: String {
+        switch self {
+        case .home: "quick_places.home"
+        case .work: "quick_places.work"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .home: "house.fill"
+        case .work: "briefcase.fill"
+        }
+    }
+}
+
 struct Place: Codable, Hashable, Identifiable, Sendable {
     let id: String
     let name: String
@@ -30,4 +49,9 @@ struct Place: Codable, Hashable, Identifiable, Sendable {
         let lon = coordinate.longitude
         return URL(string: "https://www.openstreetmap.org/?mlat=\(lat)&mlon=\(lon)#map=17/\(lat)/\(lon)")!
     }
+}
+
+struct ParkedCarLocation: Codable, Hashable, Sendable {
+    let coordinate: GeoCoordinate
+    let savedAt: Date
 }

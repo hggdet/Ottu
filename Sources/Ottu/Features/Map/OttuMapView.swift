@@ -1,14 +1,30 @@
 import CoreLocation
+import QuartzCore
 import MapLibre
 import SwiftUI
 import UIKit
 
+private final class RouteAlternativeAnnotation: MLNPointAnnotation {}
+private final class ParkedCarAnnotation: MLNPointAnnotation {}
+
 struct OttuMapView: UIViewRepresentable {
     let selectedPlace: Place?
+    let parkedCarLocation: ParkedCarLocation?
+    let parkedCarTitle: String
     let route: RoutePlan?
+    let alternativeRoutes: [RoutePlan]
+    let alternativeRouteLabels: [UUID: String]
     let styleURL: URL
     let is3D: Bool
+    let isNavigationActive: Bool
+    let navigationCoordinate: GeoCoordinate?
+    let navigationCourse: Double?
+    let reduceMotion: Bool
+    let zoomInRequest: Int
+    let zoomOutRequest: Int
     @ObservedObject var iraqBuildingsManager: IraqBuildingFootprintsManager
+    let onSelectAlternativeRoute: (UUID) -> Void
+    let onSelectParkedCar: () -> Void
     let onLongPress: (GeoCoordinate) -> Void
     let onCenterChanged: (GeoCoordinate) -> Void
 
@@ -16,7 +32,9 @@ struct OttuMapView: UIViewRepresentable {
         Coordinator(
             onLongPress: onLongPress,
             onCenterChanged: onCenterChanged,
-            iraqBuildingsManager: iraqBuildingsManager
+            iraqBuildingsManager: iraqBuildingsManager,
+            onSelectAlternativeRoute: onSelectAlternativeRoute,
+            onSelectParkedCar: onSelectParkedCar
         )
     }
 
@@ -40,54 +58,124 @@ struct OttuMapView: UIViewRepresentable {
         longPress.allowableMovement = 12
         longPress.cancelsTouchesInView = false
         mapView.addGestureRecognizer(longPress)
+        let routeTap = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleRouteTap(_:)))
+        routeTap.cancelsTouchesInView = false
+        mapView.addGestureRecognizer(routeTap)
         return mapView
     }
 
     func updateUIView(_ mapView: MLNMapView, context: Context) {
         context.coordinator.onLongPress = onLongPress
         context.coordinator.onCenterChanged = onCenterChanged
+        context.coordinator.onSelectAlternativeRoute = onSelectAlternativeRoute
+        context.coordinator.onSelectParkedCar = onSelectParkedCar
         context.coordinator.iraqBuildingsManager = iraqBuildingsManager
         if context.coordinator.currentStyleURL != styleURL {
             mapView.styleURL = styleURL
             context.coordinator.currentStyleURL = styleURL
-            context.coordinator.appliedRouteID = nil
+            context.coordinator.appliedRouteSignature = nil
             context.coordinator.resetIraqBuildingLayers()
         }
-        context.coordinator.applyCameraMode(is3D: is3D, to: mapView, animated: true)
+        context.coordinator.updateNavigationCamera(
+            isActive: isNavigationActive,
+            coordinate: navigationCoordinate,
+            course: navigationCourse,
+            is3D: is3D,
+            on: mapView,
+            animated: !reduceMotion
+        )
+        if context.coordinator.lastZoomInRequest != zoomInRequest {
+            context.coordinator.lastZoomInRequest = zoomInRequest
+            let targetZoom = min(mapView.maximumZoomLevel, mapView.zoomLevel + 1)
+            mapView.setZoomLevel(targetZoom, animated: !reduceMotion)
+        }
+        if context.coordinator.lastZoomOutRequest != zoomOutRequest {
+            context.coordinator.lastZoomOutRequest = zoomOutRequest
+            let targetZoom = max(mapView.minimumZoomLevel, mapView.zoomLevel - 1)
+            mapView.setZoomLevel(targetZoom, animated: !reduceMotion)
+        }
         if context.coordinator.lastSelectedPlaceID != selectedPlace?.id {
             context.coordinator.lastSelectedPlaceID = selectedPlace?.id
             context.coordinator.updateSelectedPlaceAnnotation(selectedPlace, on: mapView)
             if let selectedPlace {
-                mapView.setCenter(selectedPlace.coordinate.clCoordinate, zoomLevel: 15, animated: true)
+                mapView.setCenter(selectedPlace.coordinate.clCoordinate, zoomLevel: 15, animated: !reduceMotion)
             }
         }
-        context.coordinator.updateRoute(route, on: mapView)
+        context.coordinator.updateRoute(
+            route,
+            alternatives: alternativeRoutes,
+            labels: alternativeRouteLabels,
+            on: mapView
+        )
+        context.coordinator.updateParkedCarAnnotation(
+            parkedCarLocation,
+            title: parkedCarTitle,
+            on: mapView
+        )
+        context.coordinator.updateNavigationCamera(
+            isActive: isNavigationActive,
+            coordinate: navigationCoordinate,
+            course: navigationCourse,
+            is3D: is3D,
+            on: mapView,
+            animated: !reduceMotion
+        )
         context.coordinator.requestIraqBuildings(on: mapView)
     }
 
     final class Coordinator: NSObject, MLNMapViewDelegate {
         var lastSelectedPlaceID: String?
         var currentStyleURL: URL?
-        var appliedRouteID: UUID?
+        var appliedRouteSignature: String?
+        var lastZoomInRequest = 0
+        var lastZoomOutRequest = 0
         var latestRoute: RoutePlan?
+        var latestAlternativeRoutes: [RoutePlan] = []
+        var latestAlternativeLabels: [UUID: String] = [:]
         var is3D = false
+        private(set) var isNavigating = false
+        private var navigationCoordinate: GeoCoordinate?
+        private var navigationCourse: Double?
+        private var routeLayerIdentifiers: [String] = []
+        private var routeSourceIdentifiers: [String] = []
+        private var routeAlternativeAnnotations: [RouteAlternativeAnnotation] = []
         var onLongPress: (GeoCoordinate) -> Void
         var onCenterChanged: (GeoCoordinate) -> Void
+        var onSelectAlternativeRoute: (UUID) -> Void
+        var onSelectParkedCar: () -> Void
         weak var iraqBuildingsManager: IraqBuildingFootprintsManager?
         private var selectedPlaceAnnotation: MLNPointAnnotation?
+        private var parkedCarAnnotation: ParkedCarAnnotation?
+        private var lastParkedCarCoordinate: GeoCoordinate?
+        private var lastParkedCarTitle: String?
         private var iraqBuildingsTask: Task<Void, Never>?
         private var lastIraqBuildingsRequestKey: String?
         private var appliedIraqBuildingFiles: [String: URL] = [:]
         private var appliedIraqBuildings3D: Bool?
+        private lazy var userLocationStyle: MLNUserLocationAnnotationViewStyle = {
+            let style = MLNUserLocationAnnotationViewStyle()
+            style.puckFillColor = .systemBlue
+            style.puckShadowColor = .systemBlue
+            style.puckShadowOpacity = 0.28
+            style.haloFillColor = UIColor.systemBlue.withAlphaComponent(0.16)
+            style.approximateHaloFillColor = UIColor.systemBlue.withAlphaComponent(0.13)
+            style.approximateHaloBorderColor = UIColor.systemBlue.withAlphaComponent(0.45)
+            style.approximateHaloOpacity = 0.75
+            return style
+        }()
 
         init(
             onLongPress: @escaping (GeoCoordinate) -> Void,
             onCenterChanged: @escaping (GeoCoordinate) -> Void,
-            iraqBuildingsManager: IraqBuildingFootprintsManager
+            iraqBuildingsManager: IraqBuildingFootprintsManager,
+            onSelectAlternativeRoute: @escaping (UUID) -> Void,
+            onSelectParkedCar: @escaping () -> Void
         ) {
             self.onLongPress = onLongPress
             self.onCenterChanged = onCenterChanged
             self.iraqBuildingsManager = iraqBuildingsManager
+            self.onSelectAlternativeRoute = onSelectAlternativeRoute
+            self.onSelectParkedCar = onSelectParkedCar
         }
 
         @objc func handleLongPress(_ recognizer: UILongPressGestureRecognizer) {
@@ -98,10 +186,139 @@ struct OttuMapView: UIViewRepresentable {
             onLongPress(GeoCoordinate(latitude: coordinate.latitude, longitude: coordinate.longitude))
         }
 
+        @objc func handleRouteTap(_ recognizer: UITapGestureRecognizer) {
+            guard recognizer.state == .ended,
+                  let mapView = recognizer.view as? MLNMapView,
+                  !latestAlternativeRoutes.isEmpty else { return }
+            let coordinate = mapView.convert(recognizer.location(in: mapView), toCoordinateFrom: mapView)
+            let location = GeoCoordinate(latitude: coordinate.latitude, longitude: coordinate.longitude)
+            let metersPerPoint = 156_543.03392 * cos(coordinate.latitude * .pi / 180) / pow(2, mapView.zoomLevel)
+            let tolerance = max(22, min(110, metersPerPoint * 24))
+            guard let route = latestAlternativeRoutes
+                .map({ ($0, $0.distanceFromRouteMeters(near: location)) })
+                .filter({ $0.1 <= tolerance })
+                .min(by: { $0.1 < $1.1 })?.0 else { return }
+            onSelectAlternativeRoute(route.id)
+        }
+
         func mapView(_ mapView: MLNMapView, regionDidChangeAnimated animated: Bool) {
             let center = mapView.centerCoordinate
             onCenterChanged(GeoCoordinate(latitude: center.latitude, longitude: center.longitude))
             requestIraqBuildings(on: mapView)
+        }
+
+        func mapView(_ mapView: MLNMapView, viewFor annotation: MLNAnnotation) -> MLNAnnotationView? {
+            guard !(annotation is MLNUserLocation) else { return nil }
+
+            if annotation is ParkedCarAnnotation {
+                let marker = MLNAnnotationView(reuseIdentifier: "ottu-parked-car-marker")
+                marker.frame = CGRect(x: 0, y: 0, width: 44, height: 44)
+                marker.backgroundColor = .systemOrange
+                marker.layer.cornerRadius = 22
+                marker.layer.borderColor = UIColor.white.withAlphaComponent(0.98).cgColor
+                marker.layer.borderWidth = 3
+                marker.layer.shadowColor = UIColor.black.cgColor
+                marker.layer.shadowOpacity = 0.24
+                marker.layer.shadowRadius = 6
+                marker.layer.shadowOffset = CGSize(width: 0, height: 3)
+                marker.isAccessibilityElement = true
+                marker.accessibilityLabel = annotation.title ?? nil
+
+                let icon = UIImageView(image: UIImage(systemName: "car.fill"))
+                icon.tintColor = .white
+                icon.contentMode = .scaleAspectFit
+                icon.frame = marker.bounds.insetBy(dx: 11, dy: 11)
+                icon.isUserInteractionEnabled = false
+                marker.addSubview(icon)
+                return marker
+            }
+
+            if let alternative = annotation as? RouteAlternativeAnnotation {
+                let marker = MLNAnnotationView(reuseIdentifier: "ottu-route-time-pill")
+                marker.frame = CGRect(x: 0, y: 0, width: 76, height: 28)
+                marker.backgroundColor = .clear
+                marker.isAccessibilityElement = true
+                marker.accessibilityLabel = alternative.title ?? nil
+
+                let blur = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterial))
+                blur.frame = marker.bounds
+                blur.layer.cornerRadius = 14
+                blur.clipsToBounds = true
+                blur.layer.borderColor = UIColor.white.withAlphaComponent(0.55).cgColor
+                blur.layer.borderWidth = 1
+                marker.addSubview(blur)
+
+                let label = UILabel(frame: marker.bounds.insetBy(dx: 7, dy: 1))
+                label.text = alternative.title
+                label.font = .systemFont(ofSize: 11, weight: .semibold)
+                label.textColor = .label
+                label.textAlignment = .center
+                label.adjustsFontSizeToFitWidth = true
+                label.minimumScaleFactor = 0.75
+                blur.contentView.addSubview(label)
+                return marker
+            }
+
+            let marker = MLNAnnotationView(reuseIdentifier: "ottu-place-marker")
+            marker.frame = CGRect(x: 0, y: 0, width: 36, height: 36)
+            marker.backgroundColor = .systemGreen
+            marker.layer.cornerRadius = 18
+            marker.layer.borderColor = UIColor.white.withAlphaComponent(0.96).cgColor
+            marker.layer.borderWidth = 3
+            marker.layer.shadowColor = UIColor.black.cgColor
+            marker.layer.shadowOpacity = 0.2
+            marker.layer.shadowRadius = 5
+            marker.layer.shadowOffset = CGSize(width: 0, height: 2)
+            marker.isAccessibilityElement = true
+            marker.accessibilityLabel = annotation.title ?? nil
+
+            let centerDot = UIView(frame: CGRect(x: 10, y: 10, width: 16, height: 16))
+            centerDot.backgroundColor = .white
+            centerDot.layer.cornerRadius = 8
+            centerDot.isUserInteractionEnabled = false
+            marker.addSubview(centerDot)
+
+            if !UIAccessibility.isReduceMotionEnabled {
+                marker.transform = CGAffineTransform(scaleX: 0.82, y: 0.82)
+                UIView.animate(
+                    withDuration: 0.42,
+                    delay: 0,
+                    usingSpringWithDamping: 0.62,
+                    initialSpringVelocity: 0.45,
+                    options: [.allowUserInteraction, .beginFromCurrentState]
+                ) {
+                    marker.transform = .identity
+                }
+            }
+            return marker
+        }
+
+        func mapView(_ mapView: MLNMapView, didSelect annotation: MLNAnnotation) {
+            guard annotation is ParkedCarAnnotation else { return }
+            mapView.deselectAnnotation(annotation, animated: false)
+            onSelectParkedCar()
+        }
+
+        func mapView(_ mapView: MLNMapView, annotationCanShowCallout annotation: MLNAnnotation) -> Bool {
+            !(annotation is ParkedCarAnnotation)
+        }
+
+        func mapView(styleForDefaultUserLocationAnnotationView _: MLNMapView) -> MLNUserLocationAnnotationViewStyle {
+            userLocationStyle
+        }
+
+        func mapView(_ mapView: MLNMapView, didAdd annotationViews: [MLNAnnotationView]) {
+            guard !UIAccessibility.isReduceMotionEnabled else { return }
+            for annotationView in annotationViews where annotationView is MLNUserLocationAnnotationView {
+                let pulse = CABasicAnimation(keyPath: "transform.scale")
+                pulse.fromValue = 0.9
+                pulse.toValue = 1.12
+                pulse.duration = 1.8
+                pulse.autoreverses = true
+                pulse.repeatCount = .infinity
+                pulse.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                annotationView.layer.add(pulse, forKey: "ottu-user-location-pulse")
+            }
         }
 
         func updateSelectedPlaceAnnotation(_ place: Place?, on mapView: MLNMapView) {
@@ -118,12 +335,38 @@ struct OttuMapView: UIViewRepresentable {
             selectedPlaceAnnotation = annotation
         }
 
+        func updateParkedCarAnnotation(_ location: ParkedCarLocation?, title: String, on mapView: MLNMapView) {
+            if location?.coordinate == lastParkedCarCoordinate, title == lastParkedCarTitle {
+                return
+            }
+            if let parkedCarAnnotation {
+                mapView.removeAnnotation(parkedCarAnnotation)
+                self.parkedCarAnnotation = nil
+            }
+            lastParkedCarCoordinate = location?.coordinate
+            lastParkedCarTitle = location == nil ? nil : title
+            guard let location else { return }
+
+            let annotation = ParkedCarAnnotation()
+            annotation.coordinate = location.coordinate.clCoordinate
+            annotation.title = title
+            mapView.addAnnotation(annotation)
+            parkedCarAnnotation = annotation
+        }
+
         func mapViewDidFinishLoadingMap(_ mapView: MLNMapView) {
             let isDarkStyle = currentStyleURL == MapConfiguration.darkStyleURL
             applyFeatureColors(to: mapView.style, isDark: isDarkStyle)
             ensureBuildingExtrusion(in: mapView.style, isDark: isDarkStyle)
             applyCameraMode(is3D: is3D, to: mapView, animated: false)
-            updateRoute(latestRoute, on: mapView, force: true)
+            updateRoute(
+                latestRoute,
+                alternatives: latestAlternativeRoutes,
+                labels: latestAlternativeLabels,
+                on: mapView,
+                force: true
+            )
+            applyNavigationCamera(on: mapView, animated: false)
             requestIraqBuildings(on: mapView, force: true)
         }
 
@@ -199,18 +442,18 @@ struct OttuMapView: UIViewRepresentable {
 
                 let fill = MLNFillStyleLayer(identifier: "ottu-iraq-buildings-fill-\(key)", source: source)
                 let buildingColor = isDark
-                    ? UIColor(red: 0.48, green: 0.39, blue: 0.32, alpha: 1)
-                    : UIColor(red: 0.94, green: 0.48, blue: 0.24, alpha: 1)
+                    ? UIColor(red: 0.33, green: 0.37, blue: 0.35, alpha: 1)
+                    : UIColor(red: 0.82, green: 0.85, blue: 0.82, alpha: 1)
                 fill.fillColor = NSExpression(forConstantValue: buildingColor)
-                fill.fillOpacity = NSExpression(forConstantValue: 0.72)
+                fill.fillOpacity = NSExpression(forConstantValue: 0.58)
                 insertIraqBuildingLayer(fill, into: style)
 
                 let outline = MLNLineStyleLayer(identifier: "ottu-iraq-buildings-outline-\(key)", source: source)
                 let outlineColor = isDark
-                    ? UIColor(red: 0.31, green: 0.25, blue: 0.21, alpha: 0.8)
-                    : UIColor(red: 0.56, green: 0.25, blue: 0.14, alpha: 0.8)
+                    ? UIColor(red: 0.22, green: 0.27, blue: 0.25, alpha: 0.65)
+                    : UIColor(red: 0.55, green: 0.63, blue: 0.58, alpha: 0.65)
                 outline.lineColor = NSExpression(forConstantValue: outlineColor)
-                outline.lineWidth = NSExpression(forConstantValue: 0.55)
+                outline.lineWidth = NSExpression(forConstantValue: 0.45)
                 insertIraqBuildingLayer(outline, into: style)
 
                 if is3D {
@@ -218,8 +461,8 @@ struct OttuMapView: UIViewRepresentable {
                     extrusion.fillExtrusionHeight = NSExpression(forKeyPath: "height")
                     extrusion.fillExtrusionBase = NSExpression(forConstantValue: 0)
                     let extrusionColor = isDark
-                        ? UIColor(red: 0.43, green: 0.34, blue: 0.29, alpha: 1)
-                        : UIColor(red: 0.91, green: 0.43, blue: 0.22, alpha: 1)
+                        ? UIColor(red: 0.31, green: 0.36, blue: 0.34, alpha: 1)
+                        : UIColor(red: 0.78, green: 0.82, blue: 0.78, alpha: 1)
                     extrusion.fillExtrusionColor = NSExpression(forConstantValue: extrusionColor)
                     extrusion.fillExtrusionOpacity = NSExpression(forConstantValue: 0.86)
                     extrusion.predicate = NSPredicate(format: "height > 0")
@@ -258,10 +501,44 @@ struct OttuMapView: UIViewRepresentable {
 
         func applyCameraMode(is3D: Bool, to mapView: MLNMapView, animated: Bool) {
             self.is3D = is3D
-            let targetPitch: CGFloat = is3D ? 48 : 0
+            let targetPitch: CGFloat = isNavigating ? 58 : (is3D ? 40 : 0)
             guard abs(mapView.camera.pitch - targetPitch) > 0.5 else { return }
             var camera = mapView.camera
             camera.pitch = targetPitch
+            mapView.setCamera(camera, animated: animated)
+        }
+
+        func updateNavigationCamera(
+            isActive: Bool,
+            coordinate: GeoCoordinate?,
+            course: Double?,
+            is3D: Bool,
+            on mapView: MLNMapView,
+            animated: Bool
+        ) {
+            let wasNavigating = isNavigating
+            let needsCameraUpdate = isNavigating != isActive
+                || navigationCoordinate != coordinate
+                || navigationCourse != course
+            isNavigating = isActive
+            navigationCoordinate = coordinate
+            navigationCourse = course
+            self.is3D = is3D
+            applyCameraMode(is3D: is3D, to: mapView, animated: animated && needsCameraUpdate)
+            guard isActive else { return }
+            applyNavigationCamera(on: mapView, animated: animated && !wasNavigating)
+        }
+
+        private func applyNavigationCamera(on mapView: MLNMapView, animated: Bool) {
+            guard isNavigating, let coordinate = navigationCoordinate else { return }
+            let targetZoom = min(mapView.maximumZoomLevel, max(mapView.minimumZoomLevel, 17.2))
+            mapView.setZoomLevel(targetZoom, animated: false)
+            var camera = mapView.camera
+            camera.centerCoordinate = coordinate.clCoordinate
+            camera.pitch = 58
+            if let navigationCourse, navigationCourse >= 0 {
+                camera.heading = navigationCourse
+            }
             mapView.setCamera(camera, animated: animated)
         }
 
@@ -269,32 +546,32 @@ struct OttuMapView: UIViewRepresentable {
             guard let style else { return }
 
             let building = isDark
-                ? UIColor(red: 0.38, green: 0.40, blue: 0.39, alpha: 1)
-                : UIColor(red: 0.91, green: 0.56, blue: 0.31, alpha: 1)
+                ? UIColor(red: 0.31, green: 0.34, blue: 0.33, alpha: 1)
+                : UIColor(red: 0.86, green: 0.87, blue: 0.85, alpha: 1)
             let water = isDark
-                ? UIColor(red: 0.25, green: 0.43, blue: 0.52, alpha: 1)
-                : UIColor(red: 0.20, green: 0.60, blue: 0.91, alpha: 1)
+                ? UIColor(red: 0.23, green: 0.39, blue: 0.47, alpha: 1)
+                : UIColor(red: 0.59, green: 0.78, blue: 0.86, alpha: 1)
             let park = isDark
-                ? UIColor(red: 0.28, green: 0.38, blue: 0.32, alpha: 1)
-                : UIColor(red: 0.31, green: 0.71, blue: 0.47, alpha: 1)
+                ? UIColor(red: 0.22, green: 0.34, blue: 0.28, alpha: 1)
+                : UIColor(red: 0.65, green: 0.82, blue: 0.70, alpha: 1)
             let forest = isDark
-                ? UIColor(red: 0.22, green: 0.31, blue: 0.26, alpha: 1)
-                : UIColor(red: 0.16, green: 0.48, blue: 0.32, alpha: 1)
+                ? UIColor(red: 0.17, green: 0.28, blue: 0.22, alpha: 1)
+                : UIColor(red: 0.43, green: 0.64, blue: 0.48, alpha: 1)
             let grass = isDark
-                ? UIColor(red: 0.36, green: 0.40, blue: 0.31, alpha: 1)
-                : UIColor(red: 0.61, green: 0.80, blue: 0.39, alpha: 1)
+                ? UIColor(red: 0.31, green: 0.39, blue: 0.28, alpha: 1)
+                : UIColor(red: 0.73, green: 0.84, blue: 0.65, alpha: 1)
             let majorRoad = isDark
-                ? UIColor(red: 0.68, green: 0.45, blue: 0.34, alpha: 1)
-                : UIColor(red: 0.97, green: 0.49, blue: 0.25, alpha: 1)
+                ? UIColor(red: 0.40, green: 0.42, blue: 0.41, alpha: 1)
+                : UIColor(red: 0.81, green: 0.77, blue: 0.71, alpha: 1)
             let primaryRoad = isDark
-                ? UIColor(red: 0.66, green: 0.59, blue: 0.43, alpha: 1)
-                : UIColor(red: 0.98, green: 0.70, blue: 0.28, alpha: 1)
+                ? UIColor(red: 0.33, green: 0.36, blue: 0.35, alpha: 1)
+                : UIColor(red: 0.77, green: 0.78, blue: 0.75, alpha: 1)
             let localRoad = isDark
-                ? UIColor(red: 0.46, green: 0.49, blue: 0.50, alpha: 1)
-                : UIColor(red: 0.80, green: 0.84, blue: 0.88, alpha: 1)
+                ? UIColor(red: 0.26, green: 0.29, blue: 0.29, alpha: 1)
+                : UIColor(red: 0.71, green: 0.74, blue: 0.73, alpha: 1)
             let aeroway = isDark
-                ? UIColor(red: 0.46, green: 0.40, blue: 0.52, alpha: 1)
-                : UIColor(red: 0.68, green: 0.48, blue: 0.86, alpha: 1)
+                ? UIColor(red: 0.40, green: 0.37, blue: 0.46, alpha: 1)
+                : UIColor(red: 0.70, green: 0.64, blue: 0.78, alpha: 1)
 
             if isDark {
                 let background = UIColor(red: 0.11, green: 0.12, blue: 0.13, alpha: 1)
@@ -324,12 +601,16 @@ struct OttuMapView: UIViewRepresentable {
             }
             ["road_motorway", "highway_motorway_inner"].forEach {
                 setLineColor(majorRoad, on: $0, in: style)
+                setLineOpacity(0.84, on: $0, in: style)
             }
             ["road_trunk_primary", "road_secondary_tertiary", "highway_major_inner"].forEach {
                 setLineColor(primaryRoad, on: $0, in: style)
+                setLineOpacity(0.72, on: $0, in: style)
             }
             ["road_minor", "road_service_track", "highway_minor", "highway_path"].forEach {
                 setLineColor(localRoad, on: $0, in: style)
+                setLineOpacity(0.52, on: $0, in: style)
+                setLineWidth(0.65, on: $0, in: style)
             }
             ["aeroway_fill", "aeroway-area"].forEach {
                 setFillColor(aeroway, on: $0, in: style)
@@ -353,6 +634,16 @@ struct OttuMapView: UIViewRepresentable {
             layer.lineColor = NSExpression(forConstantValue: color)
         }
 
+        private func setLineOpacity(_ opacity: Double, on identifier: String, in style: MLNStyle) {
+            guard let layer = style.layer(withIdentifier: identifier) as? MLNLineStyleLayer else { return }
+            layer.lineOpacity = NSExpression(forConstantValue: opacity)
+        }
+
+        private func setLineWidth(_ width: Double, on identifier: String, in style: MLNStyle) {
+            guard let layer = style.layer(withIdentifier: identifier) as? MLNLineStyleLayer else { return }
+            layer.lineWidth = NSExpression(forConstantValue: width)
+        }
+
         private func ensureBuildingExtrusion(in style: MLNStyle?, isDark: Bool) {
             guard let style,
                   style.layer(withIdentifier: "building-3d") == nil,
@@ -365,37 +656,141 @@ struct OttuMapView: UIViewRepresentable {
             extrusion.fillExtrusionBase = NSExpression(forKeyPath: "render_min_height")
             extrusion.fillExtrusionHeight = NSExpression(forKeyPath: "render_height")
             let buildingColor = isDark
-                ? UIColor(red: 0.38, green: 0.40, blue: 0.39, alpha: 1)
-                : UIColor(red: 0.91, green: 0.56, blue: 0.31, alpha: 1)
+                ? UIColor(red: 0.31, green: 0.34, blue: 0.33, alpha: 1)
+                : UIColor(red: 0.86, green: 0.87, blue: 0.85, alpha: 1)
             extrusion.fillExtrusionColor = NSExpression(forConstantValue: buildingColor)
             extrusion.fillExtrusionOpacity = NSExpression(forConstantValue: 0.92)
             style.insertLayer(extrusion, above: buildingLayer)
         }
 
-        func updateRoute(_ route: RoutePlan?, on mapView: MLNMapView, force: Bool = false) {
+        func updateRoute(
+            _ route: RoutePlan?,
+            alternatives: [RoutePlan] = [],
+            labels: [UUID: String] = [:],
+            on mapView: MLNMapView,
+            force: Bool = false
+        ) {
             latestRoute = route
+            latestAlternativeRoutes = alternatives
+            latestAlternativeLabels = labels
             guard let style = mapView.style else { return }
-            if !force, route?.id == appliedRouteID { return }
+            let routeIDs = ([route].compactMap { $0 } + alternatives).map { $0.id.uuidString }
+            let labelSignature = labels.keys.sorted { $0.uuidString < $1.uuidString }
+                .map { "\($0.uuidString):\(labels[$0] ?? "")" }
+                .joined(separator: ",")
+            let signature = "\(routeIDs.joined(separator: ","))|\(labelSignature)"
+            if !force, signature == appliedRouteSignature { return }
+            removeRouteLayers(from: style, on: mapView)
+            appliedRouteSignature = signature
 
-            if style.layer(withIdentifier: "ottu-route-line") != nil {
-                style.removeLayer(style.layer(withIdentifier: "ottu-route-line")!)
+            for (index, alternative) in alternatives.enumerated() where alternative.coordinates.count >= 2 {
+                var coordinates = alternative.coordinates.map(\.clCoordinate)
+                let line = MLNPolylineFeature(coordinates: &coordinates, count: UInt(coordinates.count))
+                let sourceID = "ottu-route-alternative-source-\(index)"
+                let layerID = "ottu-route-alternative-line-\(index)"
+                let source = MLNShapeSource(identifier: sourceID, features: [line], options: nil)
+                let layer = MLNLineStyleLayer(identifier: layerID, source: source)
+                layer.lineColor = NSExpression(forConstantValue: UIColor.systemTeal.withAlphaComponent(0.48))
+                layer.lineWidth = NSExpression(forConstantValue: 5)
+                layer.lineCap = NSExpression(forConstantValue: "round")
+                layer.lineJoin = NSExpression(forConstantValue: "round")
+                style.addSource(source)
+                style.addLayer(layer)
+                routeSourceIdentifiers.append(sourceID)
+                routeLayerIdentifiers.append(layerID)
+
+                let annotation = RouteAlternativeAnnotation()
+                annotation.coordinate = alternative.coordinates[alternative.coordinates.count / 2].clCoordinate
+                annotation.title = labels[alternative.id] ?? ""
+                mapView.addAnnotation(annotation)
+                routeAlternativeAnnotations.append(annotation)
             }
-            if style.source(withIdentifier: "ottu-route-source") != nil {
-                style.removeSource(style.source(withIdentifier: "ottu-route-source")!)
-            }
-            appliedRouteID = route?.id
             guard let route, route.coordinates.count >= 2 else { return }
 
-            var coordinates = route.coordinates.map(\.clCoordinate)
-            let line = MLNPolylineFeature(coordinates: &coordinates, count: UInt(coordinates.count))
-            let source = MLNShapeSource(identifier: "ottu-route-source", features: [line], options: nil)
-            let layer = MLNLineStyleLayer(identifier: "ottu-route-line", source: source)
-            layer.lineColor = NSExpression(forConstantValue: UIColor.systemBlue)
-            layer.lineWidth = NSExpression(forConstantValue: 5)
-            layer.lineCap = NSExpression(forConstantValue: "round")
-            layer.lineJoin = NSExpression(forConstantValue: "round")
-            style.addSource(source)
-            style.addLayer(layer)
+            var fullCoordinates = route.coordinates.map(\.clCoordinate)
+            let fullLine = MLNPolylineFeature(coordinates: &fullCoordinates, count: UInt(fullCoordinates.count))
+            let fullSource = MLNShapeSource(identifier: "ottu-route-source", features: [fullLine], options: nil)
+            style.addSource(fullSource)
+            routeSourceIdentifiers.append("ottu-route-source")
+
+            let glow = MLNLineStyleLayer(identifier: "ottu-route-glow", source: fullSource)
+            glow.lineColor = NSExpression(forConstantValue: UIColor.systemBlue.withAlphaComponent(0.22))
+            glow.lineWidth = NSExpression(forConstantValue: 14)
+            glow.lineCap = NSExpression(forConstantValue: "round")
+            glow.lineJoin = NSExpression(forConstantValue: "round")
+            style.addLayer(glow)
+            routeLayerIdentifiers.append("ottu-route-glow")
+
+            let casing = MLNLineStyleLayer(identifier: "ottu-route-casing", source: fullSource)
+            casing.lineColor = NSExpression(forConstantValue: UIColor.white.withAlphaComponent(0.92))
+            casing.lineWidth = NSExpression(forConstantValue: 8.5)
+            casing.lineCap = NSExpression(forConstantValue: "round")
+            casing.lineJoin = NSExpression(forConstantValue: "round")
+            style.addLayer(casing)
+            routeLayerIdentifiers.append("ottu-route-casing")
+
+            let edgeCount = route.coordinates.count - 1
+            let segmentCount = min(18, edgeCount)
+            for segmentIndex in 0..<segmentCount {
+                let startIndex = segmentIndex * edgeCount / segmentCount
+                let endIndex = (segmentIndex + 1) * edgeCount / segmentCount
+                guard endIndex > startIndex else { continue }
+                var segmentCoordinates = Array(route.coordinates[startIndex...endIndex]).map(\.clCoordinate)
+                let segmentLine = MLNPolylineFeature(coordinates: &segmentCoordinates, count: UInt(segmentCoordinates.count))
+                let sourceID = "ottu-route-gradient-source-\(segmentIndex)"
+                let layerID = "ottu-route-gradient-\(segmentIndex)"
+                let source = MLNShapeSource(identifier: sourceID, features: [segmentLine], options: nil)
+                let layer = MLNLineStyleLayer(identifier: layerID, source: source)
+                layer.lineColor = NSExpression(forConstantValue: gradientColor(at: Double(segmentIndex) / Double(max(1, segmentCount - 1))))
+                layer.lineWidth = NSExpression(forConstantValue: 5.5)
+                layer.lineCap = NSExpression(forConstantValue: "round")
+                layer.lineJoin = NSExpression(forConstantValue: "round")
+                style.addSource(source)
+                style.addLayer(layer)
+                routeSourceIdentifiers.append(sourceID)
+                routeLayerIdentifiers.append(layerID)
+            }
+        }
+
+        private func removeRouteLayers(from style: MLNStyle, on mapView: MLNMapView) {
+            if !routeAlternativeAnnotations.isEmpty {
+                routeAlternativeAnnotations.forEach { mapView.removeAnnotation($0) }
+                routeAlternativeAnnotations.removeAll()
+            }
+            for identifier in routeLayerIdentifiers {
+                if let layer = style.layer(withIdentifier: identifier) { style.removeLayer(layer) }
+            }
+            for identifier in routeSourceIdentifiers {
+                if let source = style.source(withIdentifier: identifier) { style.removeSource(source) }
+            }
+            routeLayerIdentifiers.removeAll()
+            routeSourceIdentifiers.removeAll()
+        }
+
+        private func gradientColor(at position: Double) -> UIColor {
+            let stops: [(Double, UIColor)] = [
+                (0, UIColor(red: 0.12, green: 0.43, blue: 0.98, alpha: 1)),
+                (0.5, UIColor(red: 0.12, green: 0.78, blue: 0.96, alpha: 1)),
+                (1, UIColor(red: 0.27, green: 0.88, blue: 0.70, alpha: 1))
+            ]
+            let clamped = min(max(position, 0), 1)
+            let pair = clamped <= 0.5 ? (stops[0], stops[1]) : (stops[1], stops[2])
+            let local = (clamped - pair.0.0) / (pair.1.0 - pair.0.0)
+            var startRed: CGFloat = 0
+            var startGreen: CGFloat = 0
+            var startBlue: CGFloat = 0
+            var endRed: CGFloat = 0
+            var endGreen: CGFloat = 0
+            var endBlue: CGFloat = 0
+            pair.0.1.getRed(&startRed, green: &startGreen, blue: &startBlue, alpha: nil)
+            pair.1.1.getRed(&endRed, green: &endGreen, blue: &endBlue, alpha: nil)
+            let fraction = CGFloat(local)
+            return UIColor(
+                red: startRed + (endRed - startRed) * fraction,
+                green: startGreen + (endGreen - startGreen) * fraction,
+                blue: startBlue + (endBlue - startBlue) * fraction,
+                alpha: 1
+            )
         }
     }
 }

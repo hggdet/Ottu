@@ -34,7 +34,6 @@ struct FloatingGlassNavigationBar: View {
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.locale) private var locale
-    @Namespace private var selectionAnimation
 
     private var normalizedGlassIntensity: Double {
         min(max(glassIntensity, 0), 1)
@@ -52,53 +51,23 @@ struct FloatingGlassNavigationBar: View {
         .gray
     }
 
-    private var opaqueSurfaceColor: Color {
-        colorScheme == .dark ? .black : .white
-    }
-
     var body: some View {
         adaptiveNavigationBar
             .accessibilityElement(children: .contain)
     }
 
-    @ViewBuilder
     private var adaptiveNavigationBar: some View {
-#if compiler(>=6.2)
-        if #available(iOS 26.0, *) {
-            navigationBar(useNativeGlass: true)
-        } else {
-            navigationBar(useNativeGlass: false)
-        }
-#else
-        navigationBar(useNativeGlass: false)
-#endif
+        navigationBar
     }
 
-    private func navigationBar(useNativeGlass: Bool) -> some View {
+    private var navigationBar: some View {
         HStack(spacing: 0) {
             ForEach(MapNavigationTab.allCases) { tab in
                 tabButton(for: tab)
             }
         }
         .padding(4)
-        .background {
-            capsuleSurface(useNativeGlass: useNativeGlass)
-        }
-        .overlay {
-            Capsule()
-                .strokeBorder(
-                    Color.white.opacity(colorScheme == .dark ? 0.14 : 0.38),
-                    lineWidth: 1
-                )
-                .allowsHitTesting(false)
-        }
-        .clipShape(Capsule())
-        .shadow(
-            color: Color.black.opacity(colorScheme == .dark ? 0.22 : 0.09),
-            radius: 12,
-            x: 0,
-            y: 3
-        )
+        .mapGlassSurface(cornerRadius: 24, glassIntensity: normalizedGlassIntensity)
     }
 
     private func tabButton(for tab: MapNavigationTab) -> some View {
@@ -128,9 +97,8 @@ struct FloatingGlassNavigationBar: View {
             .contentShape(Capsule())
             .background {
                 if isSelected {
-                    Capsule()
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
                         .fill(selectionHighlightColor)
-                        .matchedGeometryEffect(id: "selected-tab-capsule", in: selectionAnimation)
                 }
             }
         }
@@ -148,36 +116,7 @@ struct FloatingGlassNavigationBar: View {
             .foregroundStyle(selection == tab ? selectedIconColor : unselectedColor)
     }
 
-    @ViewBuilder
-    private func capsuleSurface(useNativeGlass: Bool) -> some View {
-        ZStack {
-            Capsule()
-                .fill(opaqueSurfaceColor.opacity(1 - normalizedGlassIntensity))
-
-            if normalizedGlassIntensity > 0 {
-#if compiler(>=6.2)
-                if #available(iOS 26.0, *), useNativeGlass {
-                    Capsule()
-                        .fill(.clear)
-                        .glassEffect(.regular, in: Capsule())
-                        .opacity(normalizedGlassIntensity)
-                } else {
-                    fallbackGlassSurface
-                }
-#else
-                fallbackGlassSurface
-#endif
-            }
-        }
-    }
-
-    private var fallbackGlassSurface: some View {
-        Capsule()
-            .fill(.ultraThinMaterial)
-            .opacity(normalizedGlassIntensity)
-    }
-
     private var selectionHighlightColor: Color {
-        colorScheme == .dark ? .black.opacity(0.24) : .black.opacity(0.055)
+        colorScheme == .dark ? .green.opacity(0.16) : .green.opacity(0.1)
     }
 }
