@@ -27,17 +27,7 @@ struct FloatingMapControls: View {
                 action: onSaveCar
             )
 
-            controlButton(
-                systemName: "plus",
-                accessibilityKey: "map.zoom_in",
-                action: onZoomIn
-            )
-
-            controlButton(
-                systemName: "minus",
-                accessibilityKey: "map.zoom_out",
-                action: onZoomOut
-            )
+            zoomControlPill
 
             controlButton(
                 systemName: "square.3.layers.3d",
@@ -60,11 +50,53 @@ struct FloatingMapControls: View {
             action()
         } label: {
             Image(systemName: systemName)
-                .font(.system(size: 18, weight: .semibold))
+                .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(tint)
-                .frame(width: 52, height: 52)
+                .frame(width: 42, height: 42)
                 .contentShape(Circle())
                 .mapGlassCircleSurface(glassIntensity: glassIntensity)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text(AppLocalization.string(accessibilityKey, locale: locale)))
+    }
+
+    private var zoomControlPill: some View {
+        VStack(spacing: 0) {
+            zoomButton(
+                systemName: "plus",
+                accessibilityKey: "map.zoom_in",
+                action: onZoomIn
+            )
+
+            Rectangle()
+                .fill(Color.white.opacity(0.42))
+                .frame(width: 24, height: 1)
+                .allowsHitTesting(false)
+
+            zoomButton(
+                systemName: "minus",
+                accessibilityKey: "map.zoom_out",
+                action: onZoomOut
+            )
+        }
+        .mapGlassSurface(cornerRadius: 22, glassIntensity: glassIntensity)
+        .accessibilityElement(children: .contain)
+    }
+
+    private func zoomButton(
+        systemName: String,
+        accessibilityKey: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            action()
+        } label: {
+            Image(systemName: systemName)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(Color.primary)
+                .frame(width: 42, height: 39)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(Text(AppLocalization.string(accessibilityKey, locale: locale)))

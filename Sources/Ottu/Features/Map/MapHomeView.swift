@@ -56,6 +56,7 @@ struct MapHomeView: View {
     @State private var stopSearchRequestID = UUID()
     @State private var mapCenter = MapConfiguration.initialCenter
     @State private var selectedTab: MapNavigationTab = .location
+    @State private var isMapMoving = false
     @State private var zoomInRequest = 0
     @State private var zoomOutRequest = 0
     @State private var searchRetryToken = 0
@@ -122,7 +123,8 @@ struct MapHomeView: View {
                     searchFocused = false
                     activeSheet = .addPlace(coordinate)
                 },
-                onCenterChanged: { mapCenter = $0 }
+                onCenterChanged: { mapCenter = $0 },
+                onMapMotionChanged: { isMapMoving = $0 }
             )
             .ignoresSafeArea()
 
@@ -404,8 +406,14 @@ struct MapHomeView: View {
             .padding(.horizontal, 17)
             .frame(height: 46)
             .mapGlassSurface(cornerRadius: 24, glassIntensity: liquidGlassIntensity)
-            quickPlacesRow
-            quickCategoryChips
+            if searchFocused, query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                quickPlacesRow
+                    .transition(.opacity)
+            }
+            if !isMapMoving, !isRouting {
+                quickCategoryChips
+                    .transition(.opacity)
+            }
             if searchFocused,
                query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
                !localStore.recentPlaces.isEmpty {
@@ -423,6 +431,9 @@ struct MapHomeView: View {
         }
         .animation(reduceMotion ? nil : .spring(response: 0.36, dampingFraction: 0.88), value: isSearchExpanded)
         .animation(reduceMotion ? nil : .spring(response: 0.36, dampingFraction: 0.88), value: !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.24), value: isMapMoving)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.24), value: isRouting)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.24), value: searchFocused)
         .zIndex(10)
     }
 
@@ -577,15 +588,15 @@ struct MapHomeView: View {
                     } label: {
                         HStack(spacing: 6) {
                             Image(systemName: categorySymbol(for: category))
-                                .font(.system(size: 12, weight: .semibold))
+                                .font(.system(size: 11, weight: .semibold))
                             AppLocalizedText(category.titleKey, locale: locale)
-                                .font(.caption.weight(.semibold))
+                                .font(.system(size: 11, weight: .semibold))
                                 .lineLimit(1)
                         }
                         .foregroundStyle(isSelected ? Color.accentColor : Color.primary)
-                        .padding(.horizontal, 12)
-                        .frame(height: 36)
-                        .mapGlassSurface(cornerRadius: 18, glassIntensity: liquidGlassIntensity)
+                        .padding(.horizontal, 10)
+                        .frame(height: 34)
+                        .mapGlassSurface(cornerRadius: 17, glassIntensity: liquidGlassIntensity)
                         .overlay {
                             Capsule()
                                 .strokeBorder(isSelected ? Color.accentColor.opacity(0.55) : Color.clear, lineWidth: 1)
@@ -597,8 +608,9 @@ struct MapHomeView: View {
                     .accessibilityAddTraits(isSelected ? .isSelected : [])
                 }
             }
-            .padding(.vertical, 1)
+            .padding(.vertical, 0)
         }
+        .frame(height: 34)
         .scrollIndicators(.hidden)
         .animation(reduceMotion ? nil : .spring(response: 0.32, dampingFraction: 0.82), value: selectedQuickCategory)
     }

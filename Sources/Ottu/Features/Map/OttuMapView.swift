@@ -27,11 +27,13 @@ struct OttuMapView: UIViewRepresentable {
     let onSelectParkedCar: () -> Void
     let onLongPress: (GeoCoordinate) -> Void
     let onCenterChanged: (GeoCoordinate) -> Void
+    let onMapMotionChanged: (Bool) -> Void
 
     func makeCoordinator() -> Coordinator {
         Coordinator(
             onLongPress: onLongPress,
             onCenterChanged: onCenterChanged,
+            onMapMotionChanged: onMapMotionChanged,
             iraqBuildingsManager: iraqBuildingsManager,
             onSelectAlternativeRoute: onSelectAlternativeRoute,
             onSelectParkedCar: onSelectParkedCar
@@ -67,6 +69,7 @@ struct OttuMapView: UIViewRepresentable {
     func updateUIView(_ mapView: MLNMapView, context: Context) {
         context.coordinator.onLongPress = onLongPress
         context.coordinator.onCenterChanged = onCenterChanged
+        context.coordinator.onMapMotionChanged = onMapMotionChanged
         context.coordinator.onSelectAlternativeRoute = onSelectAlternativeRoute
         context.coordinator.onSelectParkedCar = onSelectParkedCar
         context.coordinator.iraqBuildingsManager = iraqBuildingsManager
@@ -141,11 +144,13 @@ struct OttuMapView: UIViewRepresentable {
         private var routeAlternativeAnnotations: [RouteAlternativeAnnotation] = []
         var onLongPress: (GeoCoordinate) -> Void
         var onCenterChanged: (GeoCoordinate) -> Void
+        var onMapMotionChanged: (Bool) -> Void
         var onSelectAlternativeRoute: (UUID) -> Void
         var onSelectParkedCar: () -> Void
         weak var iraqBuildingsManager: IraqBuildingFootprintsManager?
         private var selectedPlaceAnnotation: MLNPointAnnotation?
         private var parkedCarAnnotation: ParkedCarAnnotation?
+        private weak var parkedCarAnnotationView: MLNAnnotationView?
         private var lastParkedCarCoordinate: GeoCoordinate?
         private var lastParkedCarTitle: String?
         private var iraqBuildingsTask: Task<Void, Never>?
@@ -167,12 +172,14 @@ struct OttuMapView: UIViewRepresentable {
         init(
             onLongPress: @escaping (GeoCoordinate) -> Void,
             onCenterChanged: @escaping (GeoCoordinate) -> Void,
+            onMapMotionChanged: @escaping (Bool) -> Void,
             iraqBuildingsManager: IraqBuildingFootprintsManager,
             onSelectAlternativeRoute: @escaping (UUID) -> Void,
             onSelectParkedCar: @escaping () -> Void
         ) {
             self.onLongPress = onLongPress
             self.onCenterChanged = onCenterChanged
+            self.onMapMotionChanged = onMapMotionChanged
             self.iraqBuildingsManager = iraqBuildingsManager
             self.onSelectAlternativeRoute = onSelectAlternativeRoute
             self.onSelectParkedCar = onSelectParkedCar
@@ -201,7 +208,12 @@ struct OttuMapView: UIViewRepresentable {
             onSelectAlternativeRoute(route.id)
         }
 
+        func mapView(_ mapView: MLNMapView, regionWillChangeAnimated animated: Bool) {
+            onMapMotionChanged(true)
+        }
+
         func mapView(_ mapView: MLNMapView, regionDidChangeAnimated animated: Bool) {
+            onMapMotionChanged(false)
             let center = mapView.centerCoordinate
             onCenterChanged(GeoCoordinate(latitude: center.latitude, longitude: center.longitude))
             requestIraqBuildings(on: mapView)
@@ -230,6 +242,8 @@ struct OttuMapView: UIViewRepresentable {
                 icon.frame = marker.bounds.insetBy(dx: 11, dy: 11)
                 icon.isUserInteractionEnabled = false
                 marker.addSubview(icon)
+                parkedCarAnnotationView = marker
+                updateParkedCarMarkerOffset(userLocationCoordinate: mapView.userLocation?.coordinate)
                 return marker
             }
 
@@ -307,6 +321,10 @@ struct OttuMapView: UIViewRepresentable {
             userLocationStyle
         }
 
+        func mapView(_ mapView: MLNMapView, didUpdate userLocation: MLNUserLocation?) {
+            updateParkedCarMarkerOffset(userLocationCoordinate: userLocation?.coordinate)
+        }
+
         func mapView(_ mapView: MLNMapView, didAdd annotationViews: [MLNAnnotationView]) {
             guard !UIAccessibility.isReduceMotionEnabled else { return }
             for annotationView in annotationViews where annotationView is MLNUserLocationAnnotationView {
@@ -342,6 +360,7 @@ struct OttuMapView: UIViewRepresentable {
             if let parkedCarAnnotation {
                 mapView.removeAnnotation(parkedCarAnnotation)
                 self.parkedCarAnnotation = nil
+                parkedCarAnnotationView = nil
             }
             lastParkedCarCoordinate = location?.coordinate
             lastParkedCarTitle = location == nil ? nil : title
@@ -352,6 +371,27 @@ struct OttuMapView: UIViewRepresentable {
             annotation.title = title
             mapView.addAnnotation(annotation)
             parkedCarAnnotation = annotation
+        }
+
+        private func updateParkedCarMarkerOffset(userLocationCoordinate: CLLocationCoordinate2D?) {
+            guard let marker = parkedCarAnnotationView,
+                  let parkedCarAnnotation,
+                  let userLocationCoordinate else {
+                parkedCarAnnotationView?.centerOffset = .zero
+                return
+            }
+
+            let parkedLocation = CLLocation(
+                latitude: parkedCarAnnotation.coordinate.latitude,
+                longitude: parkedCarAnnotation.coordinate.longitude
+            )
+            let currentLocation = CLLocation(
+                latitude: userLocationCoordinate.latitude,
+                longitude: userLocationCoordinate.longitude
+            )
+            marker.centerOffset = parkedLocation.distance(from: currentLocation) < 15
+                ? CGPoint(x: 0, y: -42)
+                : .zero
         }
 
         func mapViewDidFinishLoadingMap(_ mapView: MLNMapView) {

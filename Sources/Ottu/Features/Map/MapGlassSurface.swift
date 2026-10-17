@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct MapGlassSurface: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
     let cornerRadius: CGFloat
     let glassIntensity: Double
 
@@ -13,28 +14,38 @@ struct MapGlassSurface: ViewModifier {
 
         content
             .background {
-                shape
-                    .fill(.ultraThinMaterial)
-                    .opacity(normalizedIntensity)
+                ZStack {
+                    shape.fill(.ultraThinMaterial)
+                    if colorScheme == .light {
+                        shape.fill(Color.white.opacity(0.45))
+                    }
+                }
+                .opacity(normalizedIntensity)
             }
             .overlay {
-                shape
-                    .strokeBorder(
-                        LinearGradient(
-                            colors: [Color.white.opacity(0.4), Color.white.opacity(0.1)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 1
-                    )
+                Group {
+                    if colorScheme == .light {
+                        shape.strokeBorder(Color.white.opacity(0.75), lineWidth: 1)
+                    } else {
+                        shape.strokeBorder(
+                            LinearGradient(
+                                colors: [Color.white.opacity(0.4), Color.white.opacity(0.1)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1
+                        )
+                    }
+                }
                     .allowsHitTesting(false)
             }
             .clipShape(shape)
-            .shadow(color: Color.black.opacity(0.08), radius: 12, y: 6)
+            .shadow(color: Color.black.opacity(colorScheme == .light ? 0.12 : 0.08), radius: colorScheme == .light ? 14 : 12, y: 6)
     }
 }
 
 struct MapGlassCircleSurface: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
     let glassIntensity: Double
 
     private var normalizedIntensity: Double {
@@ -44,17 +55,21 @@ struct MapGlassCircleSurface: ViewModifier {
     func body(content: Content) -> some View {
         content
             .background {
-                Circle()
-                    .fill(.ultraThinMaterial)
-                    .opacity(normalizedIntensity)
+                ZStack {
+                    Circle().fill(.ultraThinMaterial)
+                    if colorScheme == .light {
+                        Circle().fill(Color.white.opacity(0.45))
+                    }
+                }
+                .opacity(normalizedIntensity)
             }
             .overlay {
                 Circle()
-                    .strokeBorder(Color.white.opacity(0.3), lineWidth: 1)
+                    .strokeBorder(Color.white.opacity(colorScheme == .light ? 0.75 : 0.3), lineWidth: 1)
                     .allowsHitTesting(false)
             }
             .clipShape(Circle())
-            .shadow(color: Color.black.opacity(0.08), radius: 12, y: 6)
+            .shadow(color: Color.black.opacity(colorScheme == .light ? 0.12 : 0.08), radius: colorScheme == .light ? 14 : 12, y: 6)
     }
 }
 
