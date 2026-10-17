@@ -1336,6 +1336,29 @@ struct MapHomeView: View {
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
     }
 
+    private func openQuickStopPicker() {
+        searchFocused = false
+        stopSearchTask?.cancel()
+        stopSearchTask = nil
+        stopSearchRequestID = UUID()
+        stopSearchResults = []
+        selectedStopCategory = nil
+        stopSearchError = nil
+        isSearchingStops = false
+        activeSheet = .quickStops
+    }
+
+    private func closeQuickStopPicker() {
+        stopSearchTask?.cancel()
+        stopSearchTask = nil
+        stopSearchRequestID = UUID()
+        stopSearchResults = []
+        selectedStopCategory = nil
+        stopSearchError = nil
+        isSearchingStops = false
+        activeSheet = nil
+    }
+
     private func searchStops(for category: AssistantPlaceCategory) {
         stopSearchTask?.cancel()
         selectedStopCategory = category

@@ -8,12 +8,11 @@ struct ParkedCarSheet: View {
     let onDelete: () -> Void
 
     private var savedAtText: String {
-        let time = parkedCar.savedAt.formatted(
-            .dateTime
-                .locale(locale)
-                .dateStyle(.abbreviated)
-                .timeStyle(.shortened)
-        )
+        let formatter = DateFormatter()
+        formatter.locale = locale
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        let time = formatter.string(from: parkedCar.savedAt)
         return String(
             format: AppLocalization.string("parked_car.saved_at", locale: locale),
             locale: locale,
