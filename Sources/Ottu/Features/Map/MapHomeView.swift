@@ -263,8 +263,8 @@ struct MapHomeView: View {
             let taskKey = searchTaskKey
             await searchPlaces(for: query, taskKey: taskKey)
         }
-        .onChange(of: locationManager.coordinate) { _, coordinate in
-            guard let coordinate else { return }
+        .onChange(of: locationManager.locationUpdateID) { _, _ in
+            guard let coordinate = navigationOrigin else { return }
             if isWaitingToSaveCarLocation {
                 isWaitingToSaveCarLocation = false
                 parkedCarLocationRequestTask?.cancel()
@@ -277,7 +277,14 @@ struct MapHomeView: View {
                 saveQuickPlace(slot, at: coordinate)
             }
             if isNavigationActive, let routePlan {
-                routeProgressMeters = max(routeProgressMeters, routePlan.progressMeters(near: coordinate))
+                let previousProgress = routeProgressMeters
+                let currentProgress = routePlan.progressMeters(near: coordinate)
+                navigationStops = NavigationLocationPolicy.remainingStops(
+                    navigationStops, on: routePlan, coordinate: coordinate,
+                    accuracy: locationManager.horizontalAccuracyMeters,
+                    previousProgress: previousProgress, currentProgress: currentProgress
+                )
+                routeProgressMeters = max(routeProgressMeters, currentProgress)
                 if isAtDestination {
                     triggerArrivalFeedbackIfNeeded()
                 } else {
@@ -1416,6 +1423,10 @@ struct MapHomeView: View {
             activeSheet = nil
             return
         }
+        guard let origin = navigationOrigin else {
+            showNavigationLocationUnavailable()
+            return
+        }
         let targetID = destination.id
         let stops = navigationStops + [place]
         navigationStops = stops
@@ -1423,7 +1434,6 @@ struct MapHomeView: View {
         stopSearchTask?.cancel()
         isRerouting = true
         rerouteTask?.cancel()
-        let origin = locationManager.coordinate ?? routePlan?.coordinates.first ?? mapCenter
         rerouteTask = Task {
             do {
                 let options = try await routeService.routes(
@@ -1434,6 +1444,12 @@ struct MapHomeView: View {
                     waypoints: stops.map(\.coordinate)
                 )
                 guard !Task.isCancelled, isNavigationActive, routeTarget?.id == targetID else { return }
+                guard NavigationLocationPolicy.routeMatchesRemainingStops(
+                    requested: stops, remaining: navigationStops
+                ) else {
+                    restartRerouteForRemainingStops()
+                    return
+                }
                 guard let updatedPlan = options.first else { throw RouteError.noRoute }
                 withAnimation(.easeInOut(duration: 0.3)) {
                     routePlan = updatedPlan
@@ -1527,6 +1543,7 @@ struct MapHomeView: View {
         isRerouting = true
         lastRerouteAt = Date()
         offRouteFixCount = 0
+        let stops = navigationStops
         rerouteTask?.cancel()
         rerouteTask = Task {
             do {
@@ -1535,11 +1552,17 @@ struct MapHomeView: View {
                     to: destination.coordinate,
                     mode: activeTransportMode,
                     alternatives: false,
-                    waypoints: navigationStops.map(\.coordinate)
+                    waypoints: stops.map(\.coordinate)
                 )
                 guard !Task.isCancelled,
                       isNavigationActive,
                       routeTarget?.id == targetID else { return }
+                guard NavigationLocationPolicy.routeMatchesRemainingStops(
+                    requested: stops, remaining: navigationStops
+                ) else {
+                    restartRerouteForRemainingStops()
+                    return
+                }
                 guard let updatedPlan = options.first else { throw RouteError.noRoute }
                 withAnimation(.easeInOut(duration: 0.3)) {
                     routePlan = updatedPlan
@@ -1559,6 +1582,13 @@ struct MapHomeView: View {
         }
     }
 
+    private func restartRerouteForRemainingStops() {
+        isRerouting = false
+        rerouteTask = nil
+        guard let origin = navigationOrigin else { return }
+        requestAutomaticReroute(from: origin)
+    }
+
     private func triggerArrivalFeedbackIfNeeded() {
         guard isAtDestination, !didTriggerArrivalHaptic else { return }
         UINotificationFeedbackGenerator().notificationOccurred(.success)
@@ -1568,6 +1598,10 @@ struct MapHomeView: View {
     }
 
     private func startRoute(to place: Place, mode: RouteTransportMode? = nil) {
+        guard let origin = navigationOrigin else {
+            showNavigationLocationUnavailable()
+            return
+        }
         if place.id != "parked-car" {
             localStore.addRecentPlace(place)
         }
@@ -1594,17 +1628,8 @@ struct MapHomeView: View {
         routeTarget = place
         isPreviewingRoute = false
         routePreviewUnavailable = false
-        let origin = locationManager.coordinate ?? mapCenter
-        let cachedPlan = mode == nil && routePreviewPlaceID == place.id && isRouteOriginCurrent(routePreviewPlan, origin: origin)
-            ? routePreviewPlan
-            : nil
-        if let cachedPlan {
-            routePlan = cachedPlan
-            routeAlternatives = routePreviewOptions.filter { $0.id != cachedPlan.id }
-            isRouting = false
-            beginActiveNavigation()
-            return
-        }
+        // Previews may start at the browsed map center. Fetch the active route
+        // from the validated user fix instead of reusing that preview.
         routePlan = nil
         routeAlternatives = []
         routeTask = Task {
@@ -1640,11 +1665,20 @@ struct MapHomeView: View {
         }
     }
 
-    private func isRouteOriginCurrent(_ plan: RoutePlan?, origin: GeoCoordinate) -> Bool {
-        guard let firstCoordinate = plan?.coordinates.first else { return false }
-        let current = CLLocation(latitude: origin.latitude, longitude: origin.longitude)
-        let routeStart = CLLocation(latitude: firstCoordinate.latitude, longitude: firstCoordinate.longitude)
-        return current.distance(from: routeStart) <= 250
+    private var navigationOrigin: GeoCoordinate? {
+        NavigationLocationPolicy.origin(
+            coordinate: locationManager.coordinate,
+            timestamp: locationManager.lastLocationTimestamp,
+            accuracy: locationManager.horizontalAccuracyMeters,
+            isAuthorized: locationManager.authorizationStatus == .authorizedAlways
+                || locationManager.authorizationStatus == .authorizedWhenInUse
+        )
+    }
+
+    private func showNavigationLocationUnavailable() {
+        locationManager.requestLocation()
+        activeErrorTitle = AppLocalization.string("settings.location_unavailable_title", locale: locale)
+        activeErrorMessage = AppLocalization.string("settings.location_unavailable_message", locale: locale)
     }
 
     private func beginActiveNavigation() {
