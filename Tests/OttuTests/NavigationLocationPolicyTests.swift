@@ -48,7 +48,7 @@ final class NavigationLocationPolicyTests: XCTestCase {
         let future = stop("future", longitude: 0.008)
         let remaining = NavigationLocationPolicy.remainingStops(
             [visited, future], on: route, coordinate: user, accuracy: 5,
-            previousProgress: 150, currentProgress: 200)
+            currentProgress: 200)
         XCTAssertEqual(remaining.map(\.id), ["future"])
         XCTAssertEqual(remaining.map(\.coordinate), [future.coordinate])
     }
@@ -60,7 +60,7 @@ final class NavigationLocationPolicyTests: XCTestCase {
         let remaining = NavigationLocationPolicy.remainingStops(
             [first, second, future], on: route,
             coordinate: GeoCoordinate(latitude: 0, longitude: 0.006), accuracy: 5,
-            previousProgress: 100, currentProgress: 600)
+            currentProgress: 600)
         XCTAssertEqual(remaining.map(\.id), ["future"])
     }
 
@@ -68,7 +68,7 @@ final class NavigationLocationPolicyTests: XCTestCase {
         let remaining = NavigationLocationPolicy.remainingStops(
             [stop("stop", longitude: 0.002)], on: route,
             coordinate: GeoCoordinate(latitude: 0, longitude: 0.003), accuracy: 5,
-            previousProgress: 220, currentProgress: 300)
+            currentProgress: 300)
         XCTAssertTrue(remaining.isEmpty)
     }
 
@@ -77,18 +77,18 @@ final class NavigationLocationPolicyTests: XCTestCase {
         for accuracy in [nil, -1, 41, Double.nan] as [Double?] {
             XCTAssertEqual(NavigationLocationPolicy.remainingStops(
                 stops, on: route, coordinate: user, accuracy: accuracy,
-                previousProgress: 100, currentProgress: 600).map(\.id), stops.map(\.id))
+                currentProgress: 600).map(\.id), stops.map(\.id))
         }
         XCTAssertEqual(NavigationLocationPolicy.remainingStops(
             stops, on: route, coordinate: GeoCoordinate(latitude: 0.003, longitude: 0.006), accuracy: 5,
-            previousProgress: 100, currentProgress: 600).map(\.id), stops.map(\.id))
+            currentProgress: 600).map(\.id), stops.map(\.id))
     }
 
     func testFutureStopAndOrderedPrefixArePreserved() {
         let stops = [stop("first", longitude: 0.008), stop("later", longitude: 0.002)]
         XCTAssertEqual(NavigationLocationPolicy.remainingStops(
             stops, on: route, coordinate: user, accuracy: 5,
-            previousProgress: 100, currentProgress: 200).map(\.id), stops.map(\.id))
+            currentProgress: 200).map(\.id), stops.map(\.id))
     }
     func testResponseForVisitedStopIsRejectedAfterWaypointsChange() {
         let visited = stop("visited", longitude: 0.002)
@@ -99,6 +99,17 @@ final class NavigationLocationPolicyTests: XCTestCase {
             requested: [visited], remaining: []))
         XCTAssertTrue(NavigationLocationPolicy.routeMatchesRemainingStops(
             requested: [future], remaining: [future]))
+    }
+
+    func testAccurateFixAfterWeakGPSStillConsumesAlreadyPassedStop() {
+        let stops = [stop("visited", longitude: 0.002), stop("future", longitude: 0.008)]
+        let coordinate = GeoCoordinate(latitude: 0, longitude: 0.006)
+        XCTAssertEqual(NavigationLocationPolicy.remainingStops(
+            stops, on: route, coordinate: coordinate, accuracy: 75,
+            currentProgress: 550).map(\.id), ["visited", "future"])
+        XCTAssertEqual(NavigationLocationPolicy.remainingStops(
+            stops, on: route, coordinate: coordinate, accuracy: 5,
+            currentProgress: 600).map(\.id), ["future"])
     }
 
 }

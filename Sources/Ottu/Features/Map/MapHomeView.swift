@@ -277,12 +277,11 @@ struct MapHomeView: View {
                 saveQuickPlace(slot, at: coordinate)
             }
             if isNavigationActive, let routePlan {
-                let previousProgress = routeProgressMeters
                 let currentProgress = routePlan.progressMeters(near: coordinate)
                 navigationStops = NavigationLocationPolicy.remainingStops(
                     navigationStops, on: routePlan, coordinate: coordinate,
                     accuracy: locationManager.horizontalAccuracyMeters,
-                    previousProgress: previousProgress, currentProgress: currentProgress
+                    currentProgress: currentProgress
                 )
                 routeProgressMeters = max(routeProgressMeters, currentProgress)
                 if isAtDestination {

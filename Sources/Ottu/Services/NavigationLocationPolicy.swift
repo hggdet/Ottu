@@ -29,7 +29,6 @@ enum NavigationLocationPolicy {
         on route: RoutePlan,
         coordinate: GeoCoordinate,
         accuracy: Double?,
-        previousProgress: Double,
         currentProgress: Double
     ) -> [Place] {
         guard let accuracy, accuracy.isFinite, accuracy >= 0, accuracy <= 40 else { return stops }
@@ -40,7 +39,7 @@ enum NavigationLocationPolicy {
             if current.distance(from: location) <= 40 { return true }
             guard isOnRoute, route.distanceFromRouteMeters(near: stop.coordinate) <= 80 else { return false }
             let stopProgress = route.progressMeters(near: stop.coordinate)
-            return previousProgress < stopProgress + 50 && currentProgress >= stopProgress + 50
+            return currentProgress >= stopProgress + 50
         }))
     }
 }
