@@ -114,7 +114,7 @@
 "about.map_icons.location_pin" = "أيقونة دبوس الموقع";
 "about.map_icons.ai" = "أيقونة الذكاء الاصطناعي (مخطط أسود)";
 "about.map_icons.settings" = "أيقونة الإعدادات";
-"about.map_icons.category" = "أيقونة التصنيف";
+"about.map_icons.weather" = "أيقونة الطقس";
 "about.map_icons.made_by" = "أيقونة من تصميم";
 "about.map_icons.from" = "من";
 "about.map_icons_license" = "تُستخدم أيقونات Flaticon وفق رخصة الإسناد (Attribution)، مع ذكر المصممين أدناه.";

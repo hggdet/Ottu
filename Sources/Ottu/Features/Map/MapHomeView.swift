@@ -77,6 +77,7 @@ struct MapHomeView: View {
     @State private var activeErrorTitle = ""
     @State private var activeErrorMessage: String?
     @State private var activeErrorOffersLocationSettings = false
+    @State private var didShowLocationPermissionGuidance = false
     @State private var showsLocationExplanation = false
     @AppStorage("ottu.locationExplanationDismissed") private var locationExplanationDismissed = false
     @State private var isWaitingToSaveCarLocation = false
@@ -342,8 +343,12 @@ struct MapHomeView: View {
                 showsLocationExplanation = false
             }
             if status == .denied || status == .restricted {
+                if locationFocusPolicy.isPending { showLocationPermissionGuidanceOnce() }
                 cancelPendingLocationFocus()
             } else {
+                if status == .authorizedAlways || status == .authorizedWhenInUse {
+                    didShowLocationPermissionGuidance = false
+                }
                 applyPendingLocationFocus()
             }
         }
@@ -525,7 +530,7 @@ struct MapHomeView: View {
                         }
                     }
                     .padding(.horizontal, 17)
-                    .frame(height: 52)
+                    .frame(height: 48)
                     .glassEffect(.regular.interactive(), in: Capsule())
                 }
             }
@@ -717,13 +722,13 @@ struct MapHomeView: View {
                                 .font(.system(size: 11, weight: .semibold))
                                 .lineLimit(1)
                         }
-                        .foregroundStyle(isSelected ? Color.accentColor : Color.primary)
+                        .foregroundStyle(Color.primary)
                         .padding(.horizontal, 10)
                         .frame(height: 34)
                         .mapGlassSurface(cornerRadius: 17, glassIntensity: liquidGlassIntensity)
                         .overlay {
                             Capsule()
-                                .strokeBorder(isSelected ? Color.accentColor.opacity(0.55) : Color.clear, lineWidth: 1)
+                                .strokeBorder(isSelected ? Color.secondary.opacity(0.55) : Color.clear, lineWidth: 1)
                                 .allowsHitTesting(false)
                         }
                     }
@@ -1605,21 +1610,26 @@ struct MapHomeView: View {
     }
 
     private func centerOnMyLocation() {
-        if locationManager.authorizationStatus == .notDetermined {
-            showsLocationExplanation = true
-            return
-        }
         if locationManager.authorizationStatus == .denied || locationManager.authorizationStatus == .restricted {
             cancelPendingLocationFocus()
-            activeErrorOffersLocationSettings = true
-            activeErrorTitle = AppLocalization.string("settings.location_permission_title", locale: locale)
-            activeErrorMessage = AppLocalization.string("settings.location_permission_message", locale: locale)
+            showLocationPermissionGuidanceOnce()
             return
         }
+        // Record the tap before asking permission so approval needs no second tap.
         locationFocusPolicy.request()
+        showsLocationExplanation = false
+        locationExplanationDismissed = true
+        // Use the last known valid position immediately, then refresh GPS in parallel.
         applyPendingLocationFocus()
-        // If no usable fix exists, keep this single tap pending until GPS replies.
         locationManager.requestLocation()
+    }
+
+    private func showLocationPermissionGuidanceOnce() {
+        guard !didShowLocationPermissionGuidance else { return }
+        didShowLocationPermissionGuidance = true
+        activeErrorOffersLocationSettings = true
+        activeErrorTitle = AppLocalization.string("settings.location_permission_title", locale: locale)
+        activeErrorMessage = AppLocalization.string("settings.location_permission_message", locale: locale)
     }
 
     private func applyPendingLocationFocus() {

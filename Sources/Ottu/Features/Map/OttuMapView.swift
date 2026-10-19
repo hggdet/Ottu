@@ -300,8 +300,9 @@ struct OttuMapView: UIViewRepresentable {
         private func applyPendingRecenter(on mapView: MLNMapView) {
             guard !isNavigating, let request = pendingRecenterRequest,
                   request.id != lastAppliedRecenterID,
-                  mapView.style != nil,
                   mapView.bounds.width > 0, mapView.bounds.height > 0 else { return }
+            // Camera positioning does not require downloaded styles/tiles (makeUIView
+            // sets the initial center the same way). Do not delay a user's tap for them.
             // Mark consumed before setCenter invokes region-change delegates.
             lastAppliedRecenterID = request.id
             pendingRecenterRequest = nil

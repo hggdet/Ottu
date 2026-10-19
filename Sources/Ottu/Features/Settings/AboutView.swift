@@ -44,10 +44,10 @@ struct AboutView: View {
             }
 
             Section {
-                mapIconCredit("about.map_icons.location_pin", creator: "Freepik", creatorURL: "https://www.flaticon.com/authors/freepik")
-                mapIconCredit("about.map_icons.ai", creator: "FACH", creatorURL: "https://www.flaticon.com/authors/fach")
-                mapIconCredit("about.map_icons.settings", creator: "Phoenix Group", creatorURL: "https://www.flaticon.com/authors/phoenix-group")
-                mapIconCredit("about.map_icons.category", creator: "iconsax", creatorURL: "https://www.flaticon.com/authors/iconsax")
+                mapIconCredit("about.map_icons.location_pin", creator: "Magnific", creatorURL: "https://www.flaticon.com/authors/magnific", iconURL: "https://www.flaticon.com/free-icon/location_2838912")
+                mapIconCredit("about.map_icons.ai", creator: "RIkas Dzihab", creatorURL: "https://www.flaticon.com/authors/rikas-dzihab", iconURL: "https://www.flaticon.com/free-icon/ai_17653301")
+                mapIconCredit("about.map_icons.settings", creator: "Magnific", creatorURL: "https://www.flaticon.com/authors/magnific", iconURL: "https://www.flaticon.com/free-icon/setting_2040504")
+                mapIconCredit("about.map_icons.weather", creator: "Magnific", creatorURL: "https://www.flaticon.com/authors/magnific", iconURL: "https://www.flaticon.com/free-icon/cloudy_2932445")
             } header: {
                 AppLocalizedText("about.map_icons_section")
             } footer: {
@@ -58,7 +58,7 @@ struct AboutView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    private func mapIconCredit(_ roleKey: String, creator: String, creatorURL: String) -> some View {
+    private func mapIconCredit(_ roleKey: String, creator: String, creatorURL: String, iconURL: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             AppLocalizedText(roleKey)
                 .font(.subheadline)
@@ -70,7 +70,7 @@ struct AboutView: View {
 
             HStack(spacing: 4) {
                 AppLocalizedText("about.map_icons.from")
-                Link("Flaticon", destination: URL(string: "https://www.flaticon.com/")!)
+                Link("Flaticon", destination: URL(string: iconURL)!)
             }
             .font(.footnote)
         }

@@ -10,7 +10,6 @@ struct FloatingMapControls: View {
     private let orderedTabs: [MapNavigationTab] = [
         .location,
         .assistant,
-        .categories,
         .settings
     ]
 
@@ -40,7 +39,7 @@ struct FloatingMapControls: View {
                 .resizable()
                 .scaledToFit()
                 .frame(width: tab.iconSize, height: tab.iconSize)
-                .foregroundStyle(isSelected ? Color.green : Color.primary)
+                .foregroundStyle(Color.primary)
                 .frame(width: 46, height: 46)
                 .contentShape(Circle())
         }

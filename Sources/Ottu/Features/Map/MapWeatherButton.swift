@@ -37,33 +37,30 @@ struct MapWeatherButton: View {
         Button {
             isPopoverPresented = true
         } label: {
-            Group {
+            HStack(spacing: 7) {
+                if didFail {
+                    Image(systemName: "cloud.slash")
+                        .font(.system(size: 16, weight: .medium))
+                } else {
+                    weatherIcon(size: 18)
+                }
                 if let currentWeather {
-                    VStack(spacing: 1) {
-                        Image(systemName: symbolName(for: currentWeather.weatherCode))
-                            .font(.system(size: 16, weight: .medium))
-                        Text(temperatureText(currentWeather.temperatureCelsius))
-                            .font(.system(size: 10, weight: .semibold, design: .rounded))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.75)
-                    }
+                    Text(temperatureText(currentWeather.temperatureCelsius))
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .monospacedDigit()
+                        .lineLimit(1)
                 } else if isLoading {
                     ProgressView()
-                        .controlSize(.small)
-                } else if didFail {
-                    Image(systemName: "cloud.slash")
-                        .font(.system(size: 18, weight: .medium))
-                } else {
-                    Image(systemName: "cloud")
-                        .font(.system(size: 18, weight: .medium))
+                        .controlSize(.mini)
                 }
             }
             .foregroundStyle(Color.primary)
-            .frame(width: 52, height: 52)
-            .contentShape(Circle())
+            .padding(.horizontal, 10)
+            .frame(minWidth: 58, minHeight: 44)
+            .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .glassEffect(.clear.interactive(), in: Circle())
+        .glassEffect(.clear.interactive(), in: Capsule())
         .accessibilityLabel(accessibilityLabel)
         .popover(isPresented: $isPopoverPresented, arrowEdge: .top) {
             weatherPopover
@@ -181,19 +178,12 @@ struct MapWeatherButton: View {
         }
     }
 
-    private func symbolName(for code: Int) -> String {
-        switch code {
-        case 0: "sun.max.fill"
-        case 1, 2: "cloud.sun.fill"
-        case 3: "cloud.fill"
-        case 45, 48: "cloud.fog.fill"
-        case 51, 53, 55: "cloud.drizzle.fill"
-        case 61, 63, 65, 80, 81, 82: "cloud.rain.fill"
-        case 66, 67: "cloud.sleet.fill"
-        case 71, 73, 75, 77, 85, 86: "cloud.snow.fill"
-        case 95, 96, 99: "cloud.bolt.rain.fill"
-        default: "cloud.fill"
-        }
+    private func weatherIcon(size: CGFloat) -> some View {
+        Image("FlaticonWeather")
+            .renderingMode(.template)
+            .resizable()
+            .scaledToFit()
+            .frame(width: size, height: size)
     }
 }
 

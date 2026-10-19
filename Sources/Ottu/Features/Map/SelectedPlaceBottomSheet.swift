@@ -205,13 +205,13 @@ struct SelectedPlaceBottomSheet: View {
                             .lineLimit(1)
                             .minimumScaleFactor(0.8)
                     }
-                    .foregroundStyle(isSelected ? Color.accentColor : Color.primary)
+                    .foregroundStyle(Color.primary)
                     .frame(maxWidth: .infinity)
                     .frame(height: 38)
                     .mapGlassSurface(cornerRadius: 16, glassIntensity: glassIntensity)
                     .overlay {
                         RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .strokeBorder(isSelected ? Color.accentColor.opacity(0.55) : Color.clear, lineWidth: 1)
+                            .strokeBorder(isSelected ? Color.secondary.opacity(0.55) : Color.clear, lineWidth: 1)
                             .allowsHitTesting(false)
                     }
                 }
@@ -232,9 +232,10 @@ struct SelectedPlaceBottomSheet: View {
                 .font(.caption.weight(.semibold))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 10)
-                .foregroundStyle(isSelected ? Color.accentColor : Color.primary)
+                .foregroundStyle(Color.primary)
                 .mapGlassSurface(cornerRadius: 14, glassIntensity: glassIntensity)
         }
         .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }

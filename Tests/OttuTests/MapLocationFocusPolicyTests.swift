@@ -33,6 +33,39 @@ final class MapLocationFocusPolicyTests: XCTestCase {
         XCTAssertFalse(subject.isPending)
     }
 
+    func testExplicitTapUsesStaleFixButStartupDoesNot() {
+        var startup = MapLocationFocusPolicy()
+        XCTAssertTrue(startup.start())
+        XCTAssertNil(startup.consume(
+            coordinate: coordinate, timestamp: now.addingTimeInterval(-61), accuracy: 10,
+            isAuthorized: true, now: now
+        ))
+        XCTAssertTrue(startup.isPending)
+
+        var explicit = MapLocationFocusPolicy()
+        explicit.request()
+        XCTAssertEqual(explicit.consume(
+            coordinate: coordinate, timestamp: now.addingTimeInterval(-61), accuracy: 10,
+            isAuthorized: true, now: now
+        )?.coordinate, coordinate)
+        XCTAssertFalse(explicit.isPending)
+    }
+
+    func testExplicitTapSurvivesPermissionTransitionWithStaleFix() {
+        var subject = MapLocationFocusPolicy()
+        subject.request()
+        XCTAssertNil(subject.consume(
+            coordinate: coordinate, timestamp: now.addingTimeInterval(-120), accuracy: 10,
+            isAuthorized: false, now: now
+        ))
+        XCTAssertTrue(subject.isPending)
+        XCTAssertEqual(subject.consume(
+            coordinate: coordinate, timestamp: now.addingTimeInterval(-120), accuracy: 10,
+            isAuthorized: true, now: now
+        )?.coordinate, coordinate)
+        XCTAssertFalse(subject.isPending)
+    }
+
     func testRepeatedTapsAtSameCoordinateCreateDistinctCameraCommands() {
         var subject = MapLocationFocusPolicy()
         subject.request()
@@ -71,17 +104,18 @@ final class MapLocationFocusPolicyTests: XCTestCase {
         XCTAssertNotNil(subject.consume(coordinate: coordinate, timestamp: now, accuracy: 5_000, isAuthorized: true, now: now))
     }
 
-    func testStaleOrFutureFixKeepsSingleTapPending() {
+    func testExplicitTapRejectsFixMoreThanFiveSecondsInFuture() {
         var subject = MapLocationFocusPolicy()
         subject.request()
-        for age in [61.0, -6.0] {
-            XCTAssertNil(subject.consume(
-                coordinate: coordinate, timestamp: now.addingTimeInterval(-age),
-                accuracy: 10, isAuthorized: true, now: now
-            ))
-            XCTAssertTrue(subject.isPending)
-        }
-        XCTAssertNotNil(fix(&subject))
+        XCTAssertNil(subject.consume(
+            coordinate: coordinate, timestamp: now.addingTimeInterval(6),
+            accuracy: 10, isAuthorized: true, now: now
+        ))
+        XCTAssertTrue(subject.isPending)
+        XCTAssertNotNil(subject.consume(
+            coordinate: coordinate, timestamp: now.addingTimeInterval(-61),
+            accuracy: 10, isAuthorized: true, now: now
+        ))
     }
 
     func testInvalidAccuracyIsRejectedWithoutConsumingRequest() {

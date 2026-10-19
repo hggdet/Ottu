@@ -124,11 +124,11 @@ struct QuickStopPickerSheet: View {
                 .font(.subheadline.weight(.semibold))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
-                .foregroundStyle(selected ? Color.accentColor : Color.primary)
+                .foregroundStyle(Color.primary)
                 .mapGlassSurface(cornerRadius: 16, glassIntensity: glassIntensity)
                 .overlay {
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .strokeBorder(selected ? Color.accentColor.opacity(0.55) : Color.clear, lineWidth: 1)
+                        .strokeBorder(selected ? Color.secondary.opacity(0.55) : Color.clear, lineWidth: 1)
                         .allowsHitTesting(false)
                 }
         }

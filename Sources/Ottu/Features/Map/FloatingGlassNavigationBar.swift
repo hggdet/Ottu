@@ -21,7 +21,7 @@ enum MapNavigationTab: String, CaseIterable, Identifiable {
         switch self {
         case .location: "FlaticonLocationPin"
         case .assistant: "FlaticonAssistantOutline"
-        case .categories: "FlaticonCategories"
+        case .categories: "IconlyCategory"
         case .settings: "FlaticonSettings"
         }
     }
@@ -49,7 +49,6 @@ struct FloatingGlassNavigationBar: View {
                 tabButton(for: .assistant)
                 Spacer(minLength: 16)
                 VStack(spacing: 14) {
-                    tabButton(for: .categories)
                     tabButton(for: .settings)
                 }
             }
@@ -73,7 +72,7 @@ struct FloatingGlassNavigationBar: View {
                 .resizable()
                 .scaledToFit()
                 .frame(width: tab.iconSize, height: tab.iconSize)
-                .foregroundStyle(isSelected ? Color.green : Color.primary)
+                .foregroundStyle(Color.primary)
                 .frame(width: 46, height: 46)
                 .contentShape(Circle())
         }

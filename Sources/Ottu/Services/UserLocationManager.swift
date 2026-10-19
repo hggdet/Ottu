@@ -47,10 +47,11 @@ final class UserLocationManager: NSObject, ObservableObject, CLLocationManagerDe
         case .authorizedAlways, .authorizedWhenInUse:
             cancelRetry(resetFailureCount: true)
             hasPendingLocationRequest = true
-            manager.requestLocation()
+            requestPendingOneShot()
         case .denied, .restricted:
             cancelRetry(resetFailureCount: true)
             hasPendingLocationRequest = false
+            if !isNavigationTracking { manager.stopUpdatingLocation() }
         @unknown default:
             break
         }
@@ -88,6 +89,7 @@ final class UserLocationManager: NSObject, ObservableObject, CLLocationManagerDe
         case .denied, .restricted:
             cancelRetry(resetFailureCount: true)
             hasPendingLocationRequest = false
+            if !isNavigationTracking { manager.stopUpdatingLocation() }
         case .notDetermined:
             break
         @unknown default:
@@ -123,18 +125,23 @@ final class UserLocationManager: NSObject, ObservableObject, CLLocationManagerDe
         lastLocationTimestamp = location.timestamp
         locationUpdateID += 1
         hasPendingLocationRequest = false
+        if !isNavigationTracking { manager.stopUpdatingLocation() }
         cancelRetry(resetFailureCount: true)
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         if let locationError = error as? CLError, locationError.code == .denied {
             hasPendingLocationRequest = false
+            if !isNavigationTracking { manager.stopUpdatingLocation() }
             cancelRetry(resetFailureCount: true)
             return
         }
-        guard hasPendingLocationRequest, !isNavigationTracking,
-              Self.isRetryableLocationError(error),
-              let delay = Self.retryDelay(afterFailureCount: retryFailureCount) else { return }
+        guard hasPendingLocationRequest, !isNavigationTracking else { return }
+        guard Self.isRetryableLocationError(error),
+              let delay = Self.retryDelay(afterFailureCount: retryFailureCount) else {
+            manager.stopUpdatingLocation()
+            return
+        }
 
         retryFailureCount += 1
         retryTask?.cancel()
@@ -149,7 +156,7 @@ final class UserLocationManager: NSObject, ObservableObject, CLLocationManagerDe
                   self.manager.authorizationStatus == .authorizedAlways
                     || self.manager.authorizationStatus == .authorizedWhenInUse else { return }
             self.retryTask = nil
-            self.manager.requestLocation()
+            self.requestPendingOneShot()
         }
     }
 
@@ -193,7 +200,9 @@ final class UserLocationManager: NSObject, ObservableObject, CLLocationManagerDe
     private func requestPendingOneShot() {
         retryTask?.cancel()
         retryTask = nil
-        manager.requestLocation()
+        // requestLocation can wait for desiredAccuracy before delivering a fix.
+        // Stream only until the first usable fix, then stop in didUpdateLocations.
+        manager.startUpdatingLocation()
     }
 
     private func cancelRetry(resetFailureCount: Bool) {
