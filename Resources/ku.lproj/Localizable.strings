@@ -325,12 +325,7 @@
 "network.offline.general" = "پەیوەندیی ئینتەرنێت نییە. لەوانەیە نەخشەکە داتای داگیراو بەکاربهێنێت؛ گەڕان و ڕێگای نوێ پێویستیان بە پەیوەندییە.";
 "network.offline.active_route" = "پەیوەندی پچڕا. بە ڕێگای پاشەکەوتکراوی کاتییەوە بەردەوام بە؛ دەرکەوتنی نەخشە بە داتای داگیراوەوە پەیوەستە. گەڕان و ڕێگای نوێ ئینتەرنێت دەوێت.";
 "navigation.location" = "شوێن";
-"map.settings.user_location_icon" = "هێمای شوێنی تۆ";
 "map.settings.user_location_icon.arrow" = "تیر (بنەڕەت)";
-"map.settings.user_location_icon.moving" = "نیشاندەری لێدەر";
-"map.settings.user_location_icon.car" = "ئۆتۆمبێل";
-"map.settings.user_location_icon.walking" = "پیادەڕەوی";
-"map.settings.user_location_icon.bicycle" = "پاسکیل";
 
 /* Home Screen Quick Actions */
 "quick_action.support.title" = "ڕاپۆرت یان یارمەتی";
@@ -342,3 +337,14 @@
 "quick_action.stay.subtitle" = "تازە گەشتەکەمان دەستی پێ کردووە";
 "quick_action.stay.message" = "تازە گەشتەکەمان دەستی پێ کردووە! ئەگەر شتێک بێزارت دەکات، پێمان بڵێ بۆ ئەوەی هەوڵی باشترکردنی بدەین. بە بوونت دڵخۆشین و بڕیارەکە هەمیشە هی خۆتە.";
 "quick_action.stay.keep" = "با پێکەوە بەردەوام بین";
+
+// Assistant request states and conversation layout
+"assistant.welcome" = "دەتەوێت چی بدۆزیتەوە؟";
+"assistant.location_ready" = "گەڕانی نزیک شوێنی ئێستات بەکاردەهێنێت";
+"assistant.location_missing" = "شوێن چالاک بکە بۆ دۆزینەوەی شوێنە نزیکەکان";
+"assistant.you" = "تۆ";
+"assistant.suggestions" = "بە پێشنیارێک دەست پێ بکە";
+"assistant.cancel" = "هەڵوەشاندنەوە";
+"assistant.retry" = "دووبارە هەوڵ بدەوە";
+"assistant.cancelled" = "داواکاری هەڵوەشایەوە. دەتوانیت دووبارە هەوڵ بدەیتەوە.";
+"assistant.timed_out" = "داواکاری زۆر درێژ بوو، بۆیە گەڕان وەستا. پەیوەندییەکەت بپشکنە و دووبارە هەوڵ بدەوە.";

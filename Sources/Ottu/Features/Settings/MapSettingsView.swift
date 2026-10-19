@@ -3,7 +3,6 @@ import SwiftUI
 struct MapSettingsView: View {
     @Binding var voiceLanguage: String
     @Binding var mapDisplayMode: String
-    @AppStorage(UserLocationIcon.storageKey) private var userLocationIconRawValue = UserLocationIcon.arrow.rawValue
     let locale: Locale
 
     var body: some View {
@@ -33,21 +32,6 @@ struct MapSettingsView: View {
             .tint(.accentColor)
         } header: {
             AppLocalizedText("settings.map_display", locale: locale)
-        }
-
-        Section {
-            Picker(selection: $userLocationIconRawValue) {
-                ForEach(UserLocationIcon.allCases) { icon in
-                    Label(
-                        AppLocalization.string(icon.localizationKey, locale: locale),
-                        systemImage: icon.symbolName
-                    )
-                    .tag(icon.rawValue)
-                }
-            } label: {
-                AppLocalizedLabel("map.settings.user_location_icon", systemImage: "location.fill", locale: locale)
-            }
-            .pickerStyle(.inline)
         }
 
         Section {

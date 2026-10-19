@@ -7,42 +7,63 @@ import UIKit
 private final class RouteAlternativeAnnotation: MLNPointAnnotation {}
 private final class ParkedCarAnnotation: MLNPointAnnotation {}
 
-private final class UserLocationSymbolAnnotationView: MLNUserLocationAnnotationView {
+final class UserLocationSymbolAnnotationView: MLNUserLocationAnnotationView {
     private let symbolView = UIImageView()
+    private static let stationaryPulseKey = "ottu-stationary-location-pulse"
+    private var latestSpeed: CLLocationSpeed?
 
-    init(icon: UserLocationIcon) {
+    init() {
         super.init(annotation: nil, reuseIdentifier: "ottu-user-location-symbol")
-        frame = CGRect(x: 0, y: 0, width: 44, height: 44)
-        backgroundColor = .systemBlue
-        layer.cornerRadius = 22
-        layer.borderColor = UIColor.white.withAlphaComponent(0.98).cgColor
-        layer.borderWidth = 3
-        layer.shadowColor = UIColor.black.cgColor
-        layer.shadowOpacity = 0.24
-        layer.shadowRadius = 6
-        layer.shadowOffset = CGSize(width: 0, height: 3)
+        // Screen-space points, independent of zoom and perspective on a tilted map.
+        scalesWithViewingDistance = false
+        rotatesToMatchCamera = false
+        frame = CGRect(x: 0, y: 0, width: 22, height: 22)
+        backgroundColor = .clear
         isAccessibilityElement = true
-        accessibilityLabel = NSLocalizedString(icon.localizationKey, comment: "")
-        symbolView.image = UIImage(systemName: icon.symbolName, withConfiguration: UIImage.SymbolConfiguration(pointSize: 18, weight: .semibold))
-        symbolView.tintColor = .white
+        accessibilityLabel = NSLocalizedString("map.settings.user_location_icon.arrow", comment: "")
+        symbolView.image = UIImage(systemName: "location.north.fill", withConfiguration: UIImage.SymbolConfiguration(pointSize: 18, weight: .semibold))
+        symbolView.tintColor = .systemBlue
         symbolView.contentMode = .scaleAspectFit
-        symbolView.frame = bounds.insetBy(dx: 11, dy: 11)
+        symbolView.frame = bounds
         symbolView.isUserInteractionEnabled = false
         addSubview(symbolView)
-        if icon == .moving, !UIAccessibility.isReduceMotionEnabled {
-            let pulse = CABasicAnimation(keyPath: "transform.scale")
-            pulse.fromValue = 0.82
-            pulse.toValue = 1.16
-            pulse.duration = 1.25
-            pulse.autoreverses = true
-            pulse.repeatCount = .infinity
-            pulse.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-            symbolView.layer.add(pulse, forKey: "ottu-moving-location-pulse")
-        }
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(reduceMotionStatusDidChange),
+            name: UIAccessibility.reduceMotionStatusDidChangeNotification,
+            object: nil
+        )
     }
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    func setSpeed(_ speed: CLLocationSpeed?, reduceMotion: Bool) {
+        latestSpeed = speed
+        let isStationary = speed.map { $0.isFinite && $0 >= 0 && $0 <= 0.5 } ?? false
+        guard isStationary, !reduceMotion else {
+            symbolView.layer.removeAnimation(forKey: Self.stationaryPulseKey)
+            return
+        }
+        // Opacity preserves the arrow's 22×22pt size and its independent heading transform.
+        guard symbolView.layer.animation(forKey: Self.stationaryPulseKey) == nil else { return }
+        let pulse = CABasicAnimation(keyPath: "opacity")
+        pulse.fromValue = 1.0
+        pulse.toValue = 0.72
+        pulse.duration = 1.2
+        pulse.autoreverses = true
+        pulse.repeatCount = .infinity
+        pulse.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+        symbolView.layer.add(pulse, forKey: Self.stationaryPulseKey)
+    }
+
+    @objc private func reduceMotionStatusDidChange() {
+        setSpeed(latestSpeed, reduceMotion: UIAccessibility.isReduceMotionEnabled)
     }
 
     func setScreenHeading(_ heading: CLLocationDirection?) {
@@ -52,7 +73,6 @@ private final class UserLocationSymbolAnnotationView: MLNUserLocationAnnotationV
 }
 
 struct OttuMapView: UIViewRepresentable {
-    @AppStorage(UserLocationIcon.storageKey) private var userLocationIconRawValue = UserLocationIcon.arrow.rawValue
     let selectedPlace: Place?
     let parkedCarLocation: ParkedCarLocation?
     let parkedCarTitle: String
@@ -95,6 +115,7 @@ struct OttuMapView: UIViewRepresentable {
         mapView.compassView.isHidden = true
         mapView.showsAttributionButton = false
         mapView.showsLogoView = false
+        context.coordinator.reduceUserLocationMotion = reduceMotion
         mapView.showsUserLocation = isLocationAuthorized
         mapView.setCenter(
             MapConfiguration.initialCenter.clCoordinate,
@@ -122,6 +143,7 @@ struct OttuMapView: UIViewRepresentable {
         context.coordinator.onSelectAlternativeRoute = onSelectAlternativeRoute
         context.coordinator.onSelectParkedCar = onSelectParkedCar
         context.coordinator.iraqBuildingsManager = iraqBuildingsManager
+        context.coordinator.reduceUserLocationMotion = reduceMotion
         if mapView.showsUserLocation != isLocationAuthorized {
             mapView.showsUserLocation = isLocationAuthorized
         }
@@ -140,8 +162,7 @@ struct OttuMapView: UIViewRepresentable {
             on: mapView,
             animated: !reduceMotion
         )
-        let userLocationIcon = UserLocationIcon(rawValue: userLocationIconRawValue) ?? .arrow
-        context.coordinator.updateUserLocationIcon(userLocationIcon, on: mapView)
+        context.coordinator.updateUserLocationSymbolHeading(on: mapView)
         if context.coordinator.lastSelectedPlaceID != selectedPlace?.id {
             context.coordinator.lastSelectedPlaceID = selectedPlace?.id
             context.coordinator.updateSelectedPlaceAnnotation(selectedPlace, on: mapView)
@@ -195,8 +216,10 @@ struct OttuMapView: UIViewRepresentable {
         private(set) var isNavigating = false
         private var navigationCoordinate: GeoCoordinate?
         private var navigationCourse: Double?
-        private var userLocationIcon: UserLocationIcon = .arrow
         private var latestUserLocationCourse: CLLocationDirection?
+        private var latestUserLocationHeading: CLLocationDirection?
+        private var latestUserLocationSpeed: CLLocationSpeed?
+        var reduceUserLocationMotion = UIAccessibility.isReduceMotionEnabled
         private weak var userLocationSymbolView: UserLocationSymbolAnnotationView?
         private var routeLayerIdentifiers: [String] = []
         private var routeSourceIdentifiers: [String] = []
@@ -217,17 +240,6 @@ struct OttuMapView: UIViewRepresentable {
         private var lastIraqBuildingsRequestKey: String?
         private var appliedIraqBuildingFiles: [String: URL] = [:]
         private var appliedIraqBuildings3D: Bool?
-        private lazy var userLocationStyle: MLNUserLocationAnnotationViewStyle = {
-            let style = MLNUserLocationAnnotationViewStyle()
-            style.puckFillColor = .systemBlue
-            style.puckShadowColor = .systemBlue
-            style.puckShadowOpacity = 0.28
-            style.haloFillColor = UIColor.systemBlue.withAlphaComponent(0.16)
-            style.approximateHaloFillColor = UIColor.systemBlue.withAlphaComponent(0.13)
-            style.approximateHaloBorderColor = UIColor.systemBlue.withAlphaComponent(0.45)
-            style.approximateHaloOpacity = 0.75
-            return style
-        }()
 
         init(
             onLongPress: @escaping (GeoCoordinate) -> Void,
@@ -284,7 +296,12 @@ struct OttuMapView: UIViewRepresentable {
             onMapMotionChanged(true)
         }
 
+        func mapViewRegionIsChanging(_ mapView: MLNMapView) {
+            updateUserLocationSymbolHeading(on: mapView)
+        }
+
         func mapView(_ mapView: MLNMapView, regionDidChangeAnimated animated: Bool) {
+            updateUserLocationSymbolHeading(on: mapView)
             onMapMotionChanged(false)
             let center = mapView.centerCoordinate
             onCenterChanged(GeoCoordinate(latitude: center.latitude, longitude: center.longitude))
@@ -368,11 +385,15 @@ struct OttuMapView: UIViewRepresentable {
         }
 
         func mapView(_ mapView: MLNMapView, viewFor annotation: MLNAnnotation) -> MLNAnnotationView? {
-            if annotation is MLNUserLocation {
-                // Render every selected glyph, including the arrow. Returning nil
-                // delegates to MapLibre's default location dot instead of our symbol.
-                let marker = UserLocationSymbolAnnotationView(icon: userLocationIcon)
+            if let userLocation = annotation as? MLNUserLocation {
+                // Always render the arrow, including for previously saved icon choices.
+                // Returning nil would show MapLibre's default location dot instead.
+                let marker = UserLocationSymbolAnnotationView()
                 userLocationSymbolView = marker
+                latestUserLocationCourse = userLocation.location?.course
+                latestUserLocationHeading = validCourse(userLocation.heading?.trueHeading)
+                    ?? validCourse(userLocation.heading?.magneticHeading)
+                latestUserLocationSpeed = userLocation.location?.speed
                 updateUserLocationSymbolHeading(on: mapView)
                 return marker
             }
@@ -472,56 +493,32 @@ struct OttuMapView: UIViewRepresentable {
             !(annotation is ParkedCarAnnotation)
         }
 
-        func mapView(styleForDefaultUserLocationAnnotationView _: MLNMapView) -> MLNUserLocationAnnotationViewStyle {
-            userLocationStyle
-        }
-
-        func updateUserLocationIcon(_ icon: UserLocationIcon, on mapView: MLNMapView) {
-            guard icon != userLocationIcon else {
-                updateUserLocationSymbolHeading(on: mapView)
-                return
-            }
-            userLocationIcon = icon
-            userLocationSymbolView = nil
-            if mapView.showsUserLocation {
-                mapView.showsUserLocation = false
-                mapView.showsUserLocation = true
-            }
-            updateUserLocationSymbolHeading(on: mapView)
-        }
-
-        private func updateUserLocationSymbolHeading(on mapView: MLNMapView) {
+        func updateUserLocationSymbolHeading(on mapView: MLNMapView) {
             let navigationHeading = isNavigating ? validCourse(navigationCourse) : nil
             let course = navigationHeading ?? validCourse(latestUserLocationCourse)
+                ?? validCourse(latestUserLocationHeading)
             let screenHeading = course.map {
                 ($0 - mapView.camera.heading + 360).truncatingRemainder(dividingBy: 360)
             }
             userLocationSymbolView?.setScreenHeading(screenHeading)
+            userLocationSymbolView?.setSpeed(
+                latestUserLocationSpeed,
+                reduceMotion: reduceUserLocationMotion || UIAccessibility.isReduceMotionEnabled
+            )
         }
 
         private func validCourse(_ course: CLLocationDirection?) -> CLLocationDirection? {
-            guard let course, course >= 0, course <= 360 else { return nil }
+            guard let course, course.isFinite, course >= 0, course <= 360 else { return nil }
             return course
         }
 
         func mapView(_ mapView: MLNMapView, didUpdate userLocation: MLNUserLocation?) {
             updateParkedCarMarkerOffset(userLocationCoordinate: userLocation?.coordinate)
             latestUserLocationCourse = userLocation?.location?.course
+            latestUserLocationHeading = validCourse(userLocation?.heading?.trueHeading)
+                ?? validCourse(userLocation?.heading?.magneticHeading)
+            latestUserLocationSpeed = userLocation?.location?.speed
             updateUserLocationSymbolHeading(on: mapView)
-        }
-
-        func mapView(_ mapView: MLNMapView, didAdd annotationViews: [MLNAnnotationView]) {
-            guard !UIAccessibility.isReduceMotionEnabled, userLocationIcon != .moving else { return }
-            for annotationView in annotationViews where annotationView is MLNUserLocationAnnotationView {
-                let pulse = CABasicAnimation(keyPath: "transform.scale")
-                pulse.fromValue = 0.9
-                pulse.toValue = 1.12
-                pulse.duration = 1.8
-                pulse.autoreverses = true
-                pulse.repeatCount = .infinity
-                pulse.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-                annotationView.layer.add(pulse, forKey: "ottu-user-location-pulse")
-            }
         }
 
         func updateSelectedPlaceAnnotation(_ place: Place?, on mapView: MLNMapView) {

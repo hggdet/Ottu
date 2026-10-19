@@ -325,12 +325,7 @@
 "network.offline.general" = "لا يوجد اتصال بالإنترنت. قد تعمل الخريطة من البيانات المنزّلة؛ البحث وإنشاء مسارات جديدة يحتاجان إلى الاتصال.";
 "network.offline.active_route" = "انقطع الاتصال. تابع المسار المحفوظ مؤقتًا؛ ظهور الخريطة يعتمد على البيانات المنزّلة. البحث والمسارات الجديدة تحتاج إلى الإنترنت.";
 "navigation.location" = "الموقع";
-"map.settings.user_location_icon" = "رمز موقعك";
 "map.settings.user_location_icon.arrow" = "السهم (افتراضي)";
-"map.settings.user_location_icon.moving" = "مؤشر نابض";
-"map.settings.user_location_icon.car" = "سيارة";
-"map.settings.user_location_icon.walking" = "المشي";
-"map.settings.user_location_icon.bicycle" = "دراجة";
 
 /* Home Screen Quick Actions */
 "quick_action.support.title" = "إبلاغ أو مساعدة";
@@ -342,3 +337,14 @@
 "quick_action.stay.subtitle" = "بعدنا بأول الطريق سوا";
 "quick_action.stay.message" = "بعدنا بأول الطريق سوا! إذا شي مضايقك، احچيلنا ونحاول نحسّنه. وجودك ويانا يفرّحنا، والقرار إلك بكل محبة.";
 "quick_action.stay.keep" = "خلّينا نكمّل سوا";
+
+// Assistant request states and conversation layout
+"assistant.welcome" = "شنو تحب تكتشف؟";
+"assistant.location_ready" = "البحث القريب يعتمد على موقعك الحالي";
+"assistant.location_missing" = "فعّل الموقع للبحث عن الأماكن القريبة";
+"assistant.you" = "أنت";
+"assistant.suggestions" = "ابدأ باقتراح";
+"assistant.cancel" = "إلغاء";
+"assistant.retry" = "إعادة المحاولة";
+"assistant.cancelled" = "تم إلغاء الطلب. تقدر تعيد المحاولة متى ما تحب.";
+"assistant.timed_out" = "استغرق الطلب وقتًا أطول من المتوقع، فتوقف البحث. تحقق من الاتصال وأعد المحاولة.";

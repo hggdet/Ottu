@@ -325,12 +325,7 @@
 "network.offline.general" = "No internet connection. The map may use downloaded data; search and new routes need a connection.";
 "network.offline.active_route" = "Connection lost. Continue on the temporarily saved route; map display depends on downloaded data. Search and new routes need internet.";
 "navigation.location" = "Location";
-"map.settings.user_location_icon" = "Your location icon";
 "map.settings.user_location_icon.arrow" = "Arrow (default)";
-"map.settings.user_location_icon.moving" = "Pulsing marker";
-"map.settings.user_location_icon.car" = "Car";
-"map.settings.user_location_icon.walking" = "Walking";
-"map.settings.user_location_icon.bicycle" = "Bicycle";
 
 /* Home Screen Quick Actions */
 "quick_action.support.title" = "Report or get help";
@@ -342,3 +337,14 @@
 "quick_action.stay.subtitle" = "Our journey has just begun";
 "quick_action.stay.message" = "Our journey has just begun! If something’s bothering you, tell us so we can try to improve it. We’re happy you’re here, and the choice is always yours.";
 "quick_action.stay.keep" = "Let’s keep exploring";
+
+// Assistant request states and conversation layout
+"assistant.welcome" = "What would you like to discover?";
+"assistant.location_ready" = "Nearby searches use your current location";
+"assistant.location_missing" = "Enable location to find places nearby";
+"assistant.you" = "You";
+"assistant.suggestions" = "Start with a suggestion";
+"assistant.cancel" = "Cancel";
+"assistant.retry" = "Try again";
+"assistant.cancelled" = "Request cancelled. You can try again whenever you like.";
+"assistant.timed_out" = "The request took too long, so the search stopped. Check your connection and try again.";

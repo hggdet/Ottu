@@ -16,6 +16,8 @@ struct MapHomeView: View {
 
     @State private var query = ""
     @State private var results: [Place] = []
+    @State private var isSearchOpen = false
+    @State private var sessionSearchSuggestions: [Place] = []
     @State private var isSearchExpanded = false
     @State private var activeSheet: HomeSheet?
 #if DEBUG
@@ -105,6 +107,39 @@ struct MapHomeView: View {
 
     private var searchTaskKey: String {
         "\(currentLanguage):\(searchRetryToken):\(query)"
+    }
+
+    private var searchText: String {
+        query.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    // Keep the unfiltered suggestions intact so clearing or deleting text restores them.
+    private var filteredSearchSuggestions: [Place] {
+        var seen = Set<String>()
+        let suggestions = localStore.recentPlaces + localStore.savedPlaces
+            + localStore.communityPlaces + sessionSearchSuggestions + results
+        return suggestions.filter { place in
+            guard searchText.isEmpty || searchMatch(in: place.name) != nil
+                || searchMatch(in: place.subtitle) != nil else { return false }
+            return seen.insert(place.id).inserted
+        }
+    }
+
+    private func searchMatch(in text: String) -> Range<String.Index>? {
+        guard !searchText.isEmpty else { return nil }
+        return text.range(of: searchText, options: [.caseInsensitive, .diacriticInsensitive], locale: locale)
+    }
+
+    private func highlightedSearchText(_ text: String) -> Text {
+        guard !searchText.isEmpty else { return Text(text) }
+        var remainder = text.startIndex..<text.endIndex
+        var highlighted = Text("")
+        while let match = text.range(of: searchText, options: [.caseInsensitive, .diacriticInsensitive], range: remainder, locale: locale) {
+            highlighted = highlighted + Text(String(text[remainder.lowerBound..<match.lowerBound]))
+                + Text(String(text[match])).bold()
+            remainder = match.upperBound..<text.endIndex
+        }
+        return highlighted + Text(String(text[remainder]))
     }
 
     var body: some View {
@@ -506,33 +541,70 @@ struct MapHomeView: View {
                         locale: locale,
                         assistantService: assistantService
                     )
-                    HStack(spacing: 10) {
-                        Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                        TextField(AppLocalization.string("search.placeholder", locale: locale), text: $query)
-                            .focused($searchFocused)
-                            .textFieldStyle(.plain)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-                            .submitLabel(.search)
-                            .onSubmit { searchFocused = false }
-                            .accessibilityIdentifier("placeSearchField")
-                        if isSearching {
-                            ProgressView().controlSize(.small)
-                        } else if !query.isEmpty {
+                    if isSearchOpen {
+                        HStack(spacing: 10) {
                             Button {
+                                searchFocused = false
+                                isSearchOpen = false
                                 query = ""
-                                results = []
                                 searchErrorMessage = nil
+                                isSearchExpanded = false
                             } label: {
-                                Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
+                                Image(systemName: "xmark")
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 28, height: 44)
                             }
-                            .accessibilityLabel(Text(AppLocalization.string("search.clear", locale: locale)))
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(Text(AppLocalization.string("common.close", locale: locale)))
+                            TextField(AppLocalization.string("search.placeholder", locale: locale), text: $query)
+                                .focused($searchFocused)
+                                .textFieldStyle(.plain)
+                                .textInputAutocapitalization(.never)
+                                .autocorrectionDisabled()
+                                .submitLabel(.search)
+                                .onSubmit { searchFocused = false }
+                                .onAppear { searchFocused = true }
+                                .accessibilityIdentifier("placeSearchField")
+                            if isSearching {
+                                ProgressView().controlSize(.small)
+                            }
+                            if !query.isEmpty {
+                                Button {
+                                    query = ""
+                                    searchErrorMessage = nil
+                                    isSearchExpanded = false
+                                    searchFocused = true
+                                } label: {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundStyle(.secondary)
+                                        .frame(width: 28, height: 44)
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel(Text(AppLocalization.string("search.clear", locale: locale)))
+                                .accessibilityIdentifier("placeSearchClear")
+                            }
                         }
+                        .padding(.horizontal, 12)
+                        .frame(height: 48)
+                        .glassEffect(.regular.interactive(), in: Capsule())
+                        .transition(.opacity)
+                    } else {
+                        Button {
+                            isSearchOpen = true
+                            searchFocused = true
+                        } label: {
+                            Image(systemName: "magnifyingglass")
+                                .font(.body.weight(.medium))
+                                .frame(width: 48, height: 48)
+                        }
+                        .buttonStyle(.plain)
+                        .glassEffect(.regular.interactive(), in: Circle())
+                        .accessibilityLabel(Text(AppLocalization.string("search.placeholder", locale: locale)))
+                        .accessibilityIdentifier("placeSearchButton")
+                        .transition(.opacity)
                     }
-                    .padding(.horizontal, 17)
-                    .frame(height: 48)
-                    .glassEffect(.regular.interactive(), in: Capsule())
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(.horizontal, 6)
             if searchFocused, query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -543,21 +615,17 @@ struct MapHomeView: View {
                 quickCategoryChips
                     .transition(.opacity)
             }
-            if searchFocused,
-               query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-               !localStore.recentPlaces.isEmpty {
-                recentPlacesPanel(maxHeight: maxResultsHeight)
-                    .transition(reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))
-            }
             if selectedQuickCategory != nil {
                 nearbyResultsPanel(maxHeight: maxResultsHeight)
                     .transition(reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))
             }
-            if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            if isSearchOpen {
                 resultsPanel(maxHeight: maxResultsHeight)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .transition(reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))
             }
         }
+        .animation(reduceMotion ? nil : .spring(response: 0.36, dampingFraction: 0.88), value: isSearchOpen)
+        .animation(reduceMotion ? nil : .spring(response: 0.3, dampingFraction: 0.9), value: filteredSearchSuggestions.map(\.id))
         .animation(reduceMotion ? nil : .spring(response: 0.36, dampingFraction: 0.88), value: isSearchExpanded)
         .animation(reduceMotion ? nil : .spring(response: 0.36, dampingFraction: 0.88), value: !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.24), value: isMapMoving)
@@ -844,6 +912,7 @@ struct MapHomeView: View {
     private func searchNearbyPlaces(for category: AssistantPlaceCategory) {
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
         searchFocused = false
+        isSearchOpen = false
         query = ""
         results = []
         isSearchExpanded = false
@@ -898,6 +967,7 @@ struct MapHomeView: View {
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
         localStore.addRecentPlace(place)
         searchFocused = false
+        isSearchOpen = false
         query = ""
         isSearchExpanded = false
         clearNearbySearch()
@@ -989,12 +1059,13 @@ struct MapHomeView: View {
 
     @ViewBuilder
     private var resultsContent: some View {
+        let suggestions = filteredSearchSuggestions
         VStack(spacing: 0) {
             if let searchErrorMessage {
                 searchFailureRow(searchErrorMessage)
-                if !results.isEmpty { Divider() }
+                if !suggestions.isEmpty { Divider() }
             }
-            if results.isEmpty {
+            if suggestions.isEmpty {
                 if isSearching {
                     HStack(spacing: 10) {
                         ProgressView().controlSize(.small)
@@ -1003,25 +1074,25 @@ struct MapHomeView: View {
                     }
                     .padding(16)
                 } else if searchErrorMessage == nil {
-                    Text(AppLocalization.string("search.no_results", locale: locale))
+                    Text(AppLocalization.string(searchText.isEmpty ? "search.placeholder" : "search.no_results", locale: locale))
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(16)
                 }
             } else {
-                let visibleResults = isSearchExpanded ? results : Array(results.prefix(5))
+                let visibleResults = isSearchExpanded ? suggestions : Array(suggestions.prefix(5))
                 ForEach(visibleResults) { place in
                     Button {
                         selectPlace(place)
                     } label: {
                         HStack(spacing: 10) {
                             VStack(alignment: .leading, spacing: 3) {
-                                Text(place.name)
-                                    .font(.body.weight(.medium))
+                                highlightedSearchText(place.name)
+                                    .font(.body)
                                     .foregroundStyle(.primary)
                                 if !place.subtitle.isEmpty {
-                                    Text(place.subtitle)
+                                    highlightedSearchText(place.subtitle)
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                         .lineLimit(1)
@@ -1039,11 +1110,12 @@ struct MapHomeView: View {
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    if place.id != visibleResults.last?.id || results.count > 5 {
+                    .transition(reduceMotion ? .opacity : .offset(y: -6).combined(with: .opacity))
+                    if place.id != visibleResults.last?.id || suggestions.count > 5 {
                         Divider().padding(.leading, 16)
                     }
                 }
-                if results.count > 5 {
+                if suggestions.count > 5 {
                     Button {
                         withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) {
                             isSearchExpanded.toggle()
@@ -1384,18 +1456,12 @@ struct MapHomeView: View {
         guard searchTaskKey == taskKey else { return }
         let text = rawQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         results = []
-        isSearchExpanded = false
         searchErrorMessage = nil
         guard text.count >= 2 else {
             isSearching = false
             return
         }
         isSearching = true
-        let localMatches = (localStore.savedPlaces + localStore.communityPlaces).filter {
-            $0.name.localizedCaseInsensitiveContains(text) || $0.subtitle.localizedCaseInsensitiveContains(text)
-        }
-        var localIDs = Set<String>()
-        results = localMatches.filter { localIDs.insert($0.id).inserted }.prefix(20).map { $0 }
         defer {
             if searchTaskKey == taskKey {
                 isSearching = false
@@ -1412,7 +1478,8 @@ struct MapHomeView: View {
             let remote = try await searchService.search(text, near: mapCenter, language: currentLanguage)
             guard !Task.isCancelled, searchTaskKey == taskKey else { return }
             var seen = Set<String>()
-            results = (localMatches + remote).filter { seen.insert($0.id).inserted }.prefix(20).map { $0 }
+            results = remote
+            sessionSearchSuggestions = (sessionSearchSuggestions + remote).filter { seen.insert($0.id).inserted }
         } catch is CancellationError {
             return
         } catch {
@@ -1748,6 +1815,7 @@ struct MapHomeView: View {
         navigationStops = []
         activeSheet = nil
         searchFocused = false
+        isSearchOpen = false
         if isNavigationActive {
             locationManager.stopNavigationTracking()
             isNavigationActive = false

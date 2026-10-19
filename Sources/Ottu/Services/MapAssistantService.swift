@@ -86,31 +86,62 @@ struct AssistantWeather: Sendable {
 struct OpenStreetMapAssistantService: MapAssistantProviding {
     private let searchRadiusMeters = 5_000
     private let resultLimit = 6
-    private let overpassEndpoints = [
-        "https://overpass-api.de/api/interpreter",
-        "https://overpass.kumi.systems/api/interpreter",
-        "https://overpass.nchc.org.tw/api/interpreter"
-    ]
+    private let session: URLSession
+    private let overpassEndpoints: [String]
+    private let totalTimeout: TimeInterval
+    private let endpointTimeout: TimeInterval
+
+    init(
+        session: URLSession? = nil,
+        overpassEndpoints: [String] = [
+            "https://overpass-api.de/api/interpreter",
+            "https://overpass.kumi.systems/api/interpreter",
+            "https://overpass.nchc.org.tw/api/interpreter"
+        ],
+        totalTimeout: TimeInterval = 13,
+        endpointTimeout: TimeInterval = 5
+    ) {
+        self.overpassEndpoints = overpassEndpoints
+        self.totalTimeout = max(0, totalTimeout)
+        self.endpointTimeout = max(0, endpointTimeout)
+
+        if let session {
+            self.session = session
+        } else {
+            let configuration = URLSessionConfiguration.default
+            configuration.timeoutIntervalForRequest = max(0.1, endpointTimeout)
+            configuration.timeoutIntervalForResource = max(0.1, totalTimeout)
+            self.session = URLSession(configuration: configuration)
+        }
+    }
 
     func nearbyPlaces(
         for category: AssistantPlaceCategory,
         near coordinate: GeoCoordinate,
         language: String
     ) async throws -> [Place] {
-        let query = """
-        [out:json][timeout:20];
-        (
-        \(category.overpassStatements(near: coordinate, radius: searchRadiusMeters))
-        );
-        out center tags;
-        """
+        let startTime = ProcessInfo.processInfo.systemUptime
         var lastError: Error = AssistantServiceError.unavailable
 
         for endpoint in overpassEndpoints {
+            try Task.checkCancellation()
+            let remaining = totalTimeout - (ProcessInfo.processInfo.systemUptime - startTime)
+            guard remaining > 0 else { throw lastError }
             guard let url = URL(string: endpoint) else { continue }
+
+            let requestBudget = min(endpointTimeout, remaining)
+            guard requestBudget > 0 else { throw lastError }
+            let overpassTimeout = max(1, Int(ceil(requestBudget)))
+            let query = """
+            [out:json][timeout:\(overpassTimeout)];
+            (
+            \(category.overpassStatements(near: coordinate, radius: searchRadiusMeters))
+            );
+            out center tags;
+            """
             var request = URLRequest(url: url)
             request.httpMethod = "POST"
-            request.timeoutInterval = 25
+            request.timeoutInterval = requestBudget
             request.setValue("Wain/0.1.0 (iOS; nearby places)", forHTTPHeaderField: "User-Agent")
             request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
             var form = URLComponents()
@@ -118,7 +149,12 @@ struct OpenStreetMapAssistantService: MapAssistantProviding {
             request.httpBody = form.percentEncodedQuery?.data(using: .utf8)
 
             do {
-                let (data, response) = try await URLSession.shared.data(for: request)
+                let (data, response) = try await Self.data(
+                    for: request,
+                    using: session,
+                    timeout: requestBudget
+                )
+                try Task.checkCancellation()
                 guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
                     throw AssistantServiceError.badResponse
                 }
@@ -130,12 +166,49 @@ struct OpenStreetMapAssistantService: MapAssistantProviding {
                 )
             } catch is CancellationError {
                 throw CancellationError()
+            } catch let error as URLError where error.code == .cancelled {
+                throw CancellationError()
             } catch {
+                if Task.isCancelled { throw CancellationError() }
                 lastError = error
             }
         }
 
         throw lastError
+    }
+
+    private static func data(
+        for request: URLRequest,
+        using session: URLSession,
+        timeout: TimeInterval
+    ) async throws -> (Data, URLResponse) {
+        enum Outcome {
+            case response(Data, URLResponse)
+            case timedOut
+        }
+
+        let nanoseconds = UInt64(max(1, min(timeout, 60) * 1_000_000_000))
+        return try await withThrowingTaskGroup(of: Outcome.self) { group in
+            group.addTask {
+                let (data, response) = try await session.data(for: request)
+                return .response(data, response)
+            }
+            group.addTask {
+                try await Task.sleep(nanoseconds: nanoseconds)
+                return .timedOut
+            }
+
+            guard let outcome = try await group.next() else {
+                throw AssistantServiceError.unavailable
+            }
+            group.cancelAll()
+            switch outcome {
+            case .response(let data, let response):
+                return (data, response)
+            case .timedOut:
+                throw AssistantServiceError.requestTimedOut
+            }
+        }
     }
 
     func weather(at coordinate: GeoCoordinate) async throws -> AssistantWeather {
@@ -234,6 +307,7 @@ private enum AssistantServiceError: Error {
     case invalidURL
     case badResponse
     case unavailable
+    case requestTimedOut
 }
 
 private struct OverpassResponse: Decodable {

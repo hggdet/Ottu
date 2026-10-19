@@ -1,6 +1,7 @@
 import CoreLocation
 import SwiftUI
 
+@MainActor
 struct MapAssistantView: View {
     let userCoordinate: GeoCoordinate?
     let mapCenter: GeoCoordinate
@@ -14,7 +15,8 @@ struct MapAssistantView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var messages: [AssistantMessage]
     @State private var input = ""
-    @State private var isWorking = false
+    @StateObject private var request = AssistantRequestController<AssistantMessage>()
+    private var isWorking: Bool { request.isWorking }
     @AppStorage("ottu.distanceUnit") private var distanceUnit = "km"
     @FocusState private var inputFocused: Bool
 
@@ -36,13 +38,7 @@ struct MapAssistantView: View {
         self.assistantService = assistantService
         self.onRequestLocation = onRequestLocation
         self.onSelectPlace = onSelectPlace
-        _messages = State(initialValue: [
-            AssistantMessage(
-                text: AppLocalization.string("assistant.intro", locale: locale),
-                isUser: false,
-                places: nil
-            )
-        ])
+        _messages = State(initialValue: [])
     }
 
     private var currentCoordinate: GeoCoordinate {
@@ -51,43 +47,87 @@ struct MapAssistantView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                ScrollViewReader { proxy in
-                    ScrollView {
-                        LazyVStack(alignment: .leading, spacing: 12) {
-                            ForEach(messages) { message in
-                                messageView(message)
-                                    .id(message.id)
-                            }
-                            if isWorking {
-                                HStack(spacing: 7) {
-                                    ProgressView().controlSize(.small)
-                                    Text(localized("assistant.thinking"))
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                    Spacer(minLength: 32)
-                                }
-                                .padding(.horizontal, 14)
-                            }
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 18) {
+                        if messages.isEmpty {
+                            welcomeCard
+                            promptSuggestions
                         }
-                        .padding(.vertical, 14)
+                        ForEach(messages) { message in
+                            messageView(message)
+                                .id(message.id)
+                        }
+                        if isWorking {
+                            HStack(spacing: 10) {
+                                ProgressView().controlSize(.small)
+                                Text(localized("assistant.thinking"))
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                Button(localized("assistant.cancel")) { request.cancel() }
+                                    .font(.subheadline.weight(.semibold))
+                                    .buttonStyle(.plain)
+                                    .padding(.horizontal, 14)
+                                    .frame(minHeight: 44)
+                                    .glassEffect(.regular.interactive(), in: Capsule())
+                                    .accessibilityIdentifier("assistantCancel")
+                            }
+                            .padding(14)
+                            .background(.background, in: RoundedRectangle(cornerRadius: 18))
+                            .padding(.horizontal, 16)
+                            .accessibilityElement(children: .contain)
+                        }
+                        Color.clear.frame(height: 1).id("assistantBottom")
                     }
-                    .onChange(of: messages.count) { _, _ in
-                        guard let last = messages.last else { return }
+                    .padding(.vertical, 20)
+                }
+                .scrollDismissesKeyboard(.interactively)
+                .defaultScrollAnchor(.bottom, for: .sizeChanges)
+                .onChange(of: messages.count) { _, _ in
+                    withAnimation(.easeOut(duration: 0.2)) {
+                        proxy.scrollTo("assistantBottom", anchor: .bottom)
+                    }
+                }
+                .onChange(of: isWorking) { _, working in
+                    if working {
                         withAnimation(.easeOut(duration: 0.2)) {
-                            proxy.scrollTo(last.id, anchor: .bottom)
+                            proxy.scrollTo("assistantBottom", anchor: .bottom)
                         }
                     }
                 }
-
-                promptSuggestions
-                inputBar
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    VStack(spacing: 0) {
+                        if !messages.isEmpty && !isWorking {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 8) {
+                                    ForEach(AssistantQuickPrompt.allCases.prefix(4)) { prompt in
+                                        Button(localized(prompt.titleKey)) { send(localized(prompt.titleKey)) }
+                                            .font(.caption.weight(.medium))
+                                            .buttonStyle(.plain)
+                                            .foregroundStyle(Color.accentColor)
+                                            .padding(.horizontal, 12)
+                                            .frame(minHeight: 44)
+                                            .glassEffect(.regular.interactive(), in: Capsule())
+                                    }
+                                }
+                                .padding(.horizontal, 16)
+                                .padding(.top, 10)
+                            }
+                        }
+                        inputBar
+                    }
+                    .background(Color(uiColor: .systemGroupedBackground))
+                    .overlay(alignment: .top) { Divider().opacity(0.4) }
+                }
             }
+            .background(Color(uiColor: .systemGroupedBackground))
             .navigationTitle(localized("assistant.title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
+                        request.cancel(notify: false)
                         dismiss()
                     } label: {
                         AppLocalizedText("common.done", locale: locale)
@@ -95,22 +135,69 @@ struct MapAssistantView: View {
                 }
             }
         }
+        .environment(\.layoutDirection, AppLocalization.isRightToLeft(locale) ? .rightToLeft : .leftToRight)
+        .onDisappear { request.cancel(notify: false) }
+    }
+
+    private var welcomeCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Image(systemName: "sparkle.magnifyingglass")
+                .font(.system(size: 28, weight: .medium))
+                .foregroundStyle(Color.accentColor)
+                .padding(14)
+                .background(Color.accentColor.opacity(0.1), in: RoundedRectangle(cornerRadius: 18))
+                .accessibilityHidden(true)
+            Text(localized("assistant.welcome"))
+                .font(.title2.bold())
+            Text(localized("assistant.intro"))
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Label(localized(userCoordinate == nil ? "assistant.location_missing" : "assistant.location_ready"),
+                  systemImage: userCoordinate == nil ? "location.slash" : "location.fill")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(20)
+        .background(.background, in: RoundedRectangle(cornerRadius: 24))
+        .padding(.horizontal, 16)
     }
 
     private func messageView(_ message: AssistantMessage) -> some View {
-        VStack(alignment: message.isUser ? .trailing : .leading, spacing: 7) {
+        VStack(alignment: message.isUser ? .trailing : .leading, spacing: 8) {
+            Text(localized(message.isUser ? "assistant.you" : "assistant.title"))
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.secondary)
             HStack {
                 if message.isUser { Spacer(minLength: 42) }
                 Text(message.text)
-                    .font(.subheadline)
+                    .font(.body)
+                    .textSelection(.enabled)
                     .foregroundStyle(message.isUser ? Color.white : Color.primary)
                     .padding(.horizontal, 13)
                     .padding(.vertical, 10)
                     .background(
-                        message.isUser ? Color.accentColor : Color.primary.opacity(0.075),
+                        message.isUser ? Color.accentColor : Color(uiColor: .secondarySystemGroupedBackground),
                         in: RoundedRectangle(cornerRadius: 17, style: .continuous)
                     )
                 if !message.isUser { Spacer(minLength: 42) }
+            }
+
+            if let retryText = message.retryText {
+                Button {
+                    send(retryText, isRetry: true)
+                } label: {
+                    Label(localized("assistant.retry"), systemImage: "arrow.clockwise")
+                        .font(.subheadline.weight(.semibold))
+                        .padding(.horizontal, 14)
+                        .frame(minHeight: 44)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(Color.accentColor)
+                .glassEffect(.regular.interactive(), in: Capsule())
+                .disabled(isWorking)
+                .accessibilityIdentifier("assistantRetry")
             }
 
             if let places = message.places {
@@ -128,7 +215,7 @@ struct MapAssistantView: View {
                                     Text(place.name)
                                         .font(.subheadline.weight(.semibold))
                                         .foregroundStyle(.primary)
-                                        .lineLimit(1)
+                                        .lineLimit(2)
                                     if !place.subtitle.isEmpty {
                                         Text(place.subtitle)
                                             .font(.caption)
@@ -144,15 +231,15 @@ struct MapAssistantView: View {
                             }
                             .padding(11)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                            .overlay {
-                                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                    .strokeBorder(Color.primary.opacity(0.06), lineWidth: 1)
-                            }
                             .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                         }
                         .buttonStyle(.plain)
-                        .accessibilityLabel(Text(place.name))
+                        .glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .accessibilityLabel(Text(
+                            [place.name, place.subtitle, distanceText(to: place)]
+                                .filter { !$0.isEmpty }
+                                .joined(separator: ", ")
+                        ))
                     }
                 }
                 .padding(.leading, message.isUser ? 42 : 0)
@@ -162,27 +249,28 @@ struct MapAssistantView: View {
     }
 
     private var promptSuggestions: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(localized("assistant.suggestions"))
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
                 ForEach(AssistantQuickPrompt.allCases) { prompt in
                     Button {
                         send(localized(prompt.titleKey))
                     } label: {
-                        Text(localized(prompt.titleKey))
-                            .font(.caption.weight(.medium))
-                            .foregroundStyle(Color.accentColor)
-                            .padding(.horizontal, 11)
-                            .padding(.vertical, 8)
-                            .background(Color.accentColor.opacity(0.11), in: Capsule())
+                        Label(localized(prompt.titleKey), systemImage: prompt.symbol)
+                            .font(.subheadline.weight(.medium))
+                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 4)
                     }
                     .buttonStyle(.plain)
+                    .glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: 14))
                     .disabled(isWorking)
                 }
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
         }
-        .overlay(alignment: .top) { Divider().opacity(0.35) }
+        .padding(.horizontal, 16)
     }
 
     private var inputBar: some View {
@@ -197,16 +285,20 @@ struct MapAssistantView: View {
                 .onSubmit { send(input) }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 11)
-                .background(Color.primary.opacity(0.07), in: Capsule())
+                .frame(minHeight: 44)
+                .glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: 20))
                 .accessibilityIdentifier("assistantInput")
 
             Button {
                 send(input)
             } label: {
-                Image(systemName: "arrow.up.circle.fill")
-                    .font(.system(size: 30))
+                Image(systemName: "arrow.up")
+                    .font(.system(size: 20, weight: .semibold))
+                    .frame(width: 44, height: 44)
             }
             .buttonStyle(.plain)
+            .foregroundStyle(Color.accentColor)
+            .glassEffect(.regular.interactive(), in: Circle())
             .disabled(input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isWorking)
             .accessibilityLabel(Text(localized("assistant.send")))
         }
@@ -215,134 +307,130 @@ struct MapAssistantView: View {
         .padding(.bottom, 12)
     }
 
-    private func send(_ rawText: String) {
+    @MainActor
+    private func send(_ rawText: String, isRetry: Bool = false) {
         let text = rawText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, !isWorking else { return }
-        input = ""
+        if !isRetry { input = "" }
         inputFocused = false
-        messages.append(AssistantMessage(text: text, isUser: true, places: nil))
-        isWorking = true
-
-        Task { @MainActor in
-            let reply = await answer(text)
-            messages.append(reply)
-            isWorking = false
+        if !isRetry {
+            messages.append(AssistantMessage(text: text, isUser: true, places: nil))
         }
+        request.start(operation: {
+            try await answer(text)
+        }, onCompletion: { outcome in
+            switch outcome {
+            case .success(let reply):
+                messages.append(reply)
+            case .failure:
+                messages.append(AssistantMessage(text: localized("assistant.service_unavailable"), isUser: false,
+                                                 places: nil, retryText: text))
+            case .timedOut:
+                messages.append(AssistantMessage(text: localized("assistant.timed_out"), isUser: false,
+                                                 places: nil, retryText: text))
+            case .cancelled:
+                messages.append(AssistantMessage(text: localized("assistant.cancelled"), isUser: false,
+                                                 places: nil, retryText: text))
+            }
+        })
     }
 
-    private func answer(_ text: String) async -> AssistantMessage {
+    private func answer(_ text: String) async throws -> AssistantMessage {
+        try Task.checkCancellation()
         switch AssistantIntentMatcher.match(text) {
         case .nearby(let category):
             guard let userCoordinate else {
                 onRequestLocation()
-                return reply("assistant.need_location")
+                return AssistantMessage(text: localized("assistant.need_location"), isUser: false, places: nil, retryText: text)
             }
-            do {
-                let places = try await assistantService.nearbyPlaces(
-                    for: category,
-                    near: userCoordinate,
-                    language: language
-                )
-                guard !places.isEmpty else {
-                    let categoryName = localized(category.titleKey)
-                    return reply(
-                        String(
-                            format: localized("assistant.no_nearby_format"),
-                            locale: locale,
-                            arguments: [categoryName]
-                        )
-                    )
-                }
+            let places = try await assistantService.nearbyPlaces(
+                for: category,
+                near: userCoordinate,
+                language: language
+            )
+            guard !places.isEmpty else {
+                let categoryName = localized(category.titleKey)
                 return AssistantMessage(
-                    text: localized("assistant.nearby_results"),
-                    isUser: false,
-                    places: places
+                    text: String(format: localized("assistant.no_nearby_format"),
+                                 locale: locale, arguments: [categoryName]),
+                    isUser: false, places: nil
                 )
-            } catch {
-                return reply("assistant.service_unavailable")
             }
+            return AssistantMessage(
+                text: localized("assistant.nearby_results"),
+                isUser: false,
+                places: places
+            )
 
         case .weather:
             guard let userCoordinate else {
                 onRequestLocation()
-                return reply("assistant.need_location")
+                return AssistantMessage(text: localized("assistant.need_location"), isUser: false, places: nil, retryText: text)
             }
-            do {
-                let weather = try await assistantService.weather(at: userCoordinate)
-                let condition = localized(weatherConditionKey(for: weather.weatherCode))
-                var response = String(
-                    format: localized("assistant.weather_format"),
-                    locale: locale,
-                    arguments: [condition, weather.temperatureCelsius]
-                )
-                let times = [
-                    weather.sunrise.map { "\(localized("assistant.sunrise")) \($0)" },
-                    weather.sunset.map { "\(localized("assistant.sunset")) \($0)" }
-                ].compactMap { $0 }
-                if !times.isEmpty { response += " · " + times.joined(separator: " · ") }
-                return AssistantMessage(text: response, isUser: false, places: nil)
-            } catch {
-                return reply("assistant.service_unavailable")
-            }
+            let weather = try await assistantService.weather(at: userCoordinate)
+            let condition = localized(weatherConditionKey(for: weather.weatherCode))
+            var response = String(
+                format: localized("assistant.weather_format"),
+                locale: locale,
+                arguments: [condition, weather.temperatureCelsius]
+            )
+            let times = [
+                weather.sunrise.map { "\(localized("assistant.sunrise")) \($0)" },
+                weather.sunset.map { "\(localized("assistant.sunset")) \($0)" }
+            ].compactMap { $0 }
+            if !times.isEmpty { response += " · " + times.joined(separator: " · ") }
+            return AssistantMessage(text: response, isUser: false, places: nil)
 
         case .street:
             guard let userCoordinate else {
                 onRequestLocation()
-                return reply("assistant.need_location")
+                return AssistantMessage(text: localized("assistant.need_location"), isUser: false, places: nil, retryText: text)
             }
-            do {
-                guard let street = try await assistantService.nearbyStreet(
-                    at: userCoordinate,
-                    language: language
-                ) else {
-                    return reply("assistant.street_not_found")
-                }
-                return AssistantMessage(
-                    text: String(
-                        format: localized("assistant.street_format"),
-                        locale: locale,
-                        arguments: [street]
-                    ),
-                    isUser: false,
-                    places: nil
-                )
-            } catch {
-                return reply("assistant.service_unavailable")
+            guard let street = try await assistantService.nearbyStreet(
+                at: userCoordinate,
+                language: language
+            ) else {
+                return reply("assistant.street_not_found")
             }
+            return AssistantMessage(
+                text: String(
+                    format: localized("assistant.street_format"),
+                    locale: locale,
+                    arguments: [street]
+                ),
+                isUser: false,
+                places: nil
+            )
 
         case .greeting:
             return reply("assistant.greeting")
 
         case .search:
-            do {
-                let places = try await searchService.search(
-                    text,
-                    near: currentCoordinate,
-                    language: language
-                )
-                guard !places.isEmpty else {
-                    return AssistantMessage(
-                        text: String(
-                            format: localized("assistant.search_empty_format"),
-                            locale: locale,
-                            arguments: [text]
-                        ),
-                        isUser: false,
-                        places: nil
-                    )
-                }
+            let places = try await searchService.search(
+                text,
+                near: currentCoordinate,
+                language: language
+            )
+            guard !places.isEmpty else {
                 return AssistantMessage(
                     text: String(
-                        format: localized("assistant.search_results_format"),
+                        format: localized("assistant.search_empty_format"),
                         locale: locale,
                         arguments: [text]
                     ),
                     isUser: false,
-                    places: places
+                    places: nil
                 )
-            } catch {
-                return reply("assistant.service_unavailable")
             }
+            return AssistantMessage(
+                text: String(
+                    format: localized("assistant.search_results_format"),
+                    locale: locale,
+                    arguments: [text]
+                ),
+                isUser: false,
+                places: places
+            )
         }
     }
 
@@ -386,6 +474,7 @@ private struct AssistantMessage: Identifiable {
     let text: String
     let isUser: Bool
     let places: [Place]?
+    var retryText: String? = nil
 }
 
 private enum AssistantQuickPrompt: String, CaseIterable, Identifiable {
@@ -393,6 +482,20 @@ private enum AssistantQuickPrompt: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
     var titleKey: String { "assistant.prompt.\(rawValue)" }
+    var symbol: String {
+        switch self {
+        case .pharmacy: "cross.case"
+        case .restaurant: "fork.knife"
+        case .cafe: "cup.and.saucer"
+        case .hospital: "cross.circle"
+        case .fuel: "fuelpump"
+        case .hotel: "bed.double"
+        case .park: "tree"
+        case .market: "basket"
+        case .weather: "cloud.sun"
+        case .street: "location"
+        }
+    }
 }
 
 private enum AssistantIntent {
