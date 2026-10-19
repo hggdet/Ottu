@@ -62,8 +62,11 @@ struct OttuMapView: UIViewRepresentable {
     let styleURL: URL
     let is3D: Bool
     let isNavigationActive: Bool
+    let routeCameraMode: RouteCameraPolicy.Mode
+    let isLocationAuthorized: Bool
     let navigationCoordinate: GeoCoordinate?
     let navigationCourse: Double?
+    let recenterRequest: MapRecenterRequest?
     let reduceMotion: Bool
     @ObservedObject var iraqBuildingsManager: IraqBuildingFootprintsManager
     let onSelectAlternativeRoute: (UUID) -> Void
@@ -71,12 +74,14 @@ struct OttuMapView: UIViewRepresentable {
     let onLongPress: (GeoCoordinate) -> Void
     let onCenterChanged: (GeoCoordinate) -> Void
     let onMapMotionChanged: (Bool) -> Void
+    let onUserInteraction: () -> Void
 
     func makeCoordinator() -> Coordinator {
         Coordinator(
             onLongPress: onLongPress,
             onCenterChanged: onCenterChanged,
             onMapMotionChanged: onMapMotionChanged,
+            onUserInteraction: onUserInteraction,
             iraqBuildingsManager: iraqBuildingsManager,
             onSelectAlternativeRoute: onSelectAlternativeRoute,
             onSelectParkedCar: onSelectParkedCar
@@ -90,7 +95,7 @@ struct OttuMapView: UIViewRepresentable {
         mapView.compassView.isHidden = true
         mapView.showsAttributionButton = false
         mapView.showsLogoView = false
-        mapView.showsUserLocation = true
+        mapView.showsUserLocation = isLocationAuthorized
         mapView.setCenter(
             MapConfiguration.initialCenter.clCoordinate,
             zoomLevel: MapConfiguration.initialZoom,
@@ -113,9 +118,13 @@ struct OttuMapView: UIViewRepresentable {
         context.coordinator.onLongPress = onLongPress
         context.coordinator.onCenterChanged = onCenterChanged
         context.coordinator.onMapMotionChanged = onMapMotionChanged
+        context.coordinator.onUserInteraction = onUserInteraction
         context.coordinator.onSelectAlternativeRoute = onSelectAlternativeRoute
         context.coordinator.onSelectParkedCar = onSelectParkedCar
         context.coordinator.iraqBuildingsManager = iraqBuildingsManager
+        if mapView.showsUserLocation != isLocationAuthorized {
+            mapView.showsUserLocation = isLocationAuthorized
+        }
         if context.coordinator.currentStyleURL != styleURL {
             mapView.styleURL = styleURL
             context.coordinator.currentStyleURL = styleURL
@@ -124,6 +133,7 @@ struct OttuMapView: UIViewRepresentable {
         }
         context.coordinator.updateNavigationCamera(
             isActive: isNavigationActive,
+            mode: routeCameraMode,
             coordinate: navigationCoordinate,
             course: navigationCourse,
             is3D: is3D,
@@ -135,7 +145,7 @@ struct OttuMapView: UIViewRepresentable {
         if context.coordinator.lastSelectedPlaceID != selectedPlace?.id {
             context.coordinator.lastSelectedPlaceID = selectedPlace?.id
             context.coordinator.updateSelectedPlaceAnnotation(selectedPlace, on: mapView)
-            if let selectedPlace {
+            if let selectedPlace, !isNavigationActive {
                 mapView.setCenter(selectedPlace.coordinate.clCoordinate, zoomLevel: 15, animated: !reduceMotion)
             }
         }
@@ -150,21 +160,34 @@ struct OttuMapView: UIViewRepresentable {
             title: parkedCarTitle,
             on: mapView
         )
-        context.coordinator.updateNavigationCamera(
-            isActive: isNavigationActive,
-            coordinate: navigationCoordinate,
-            course: navigationCourse,
-            is3D: is3D,
+        context.coordinator.updateRouteOverview(
+            route: route,
+            origin: navigationCoordinate,
+            destination: selectedPlace?.coordinate,
             on: mapView,
             animated: !reduceMotion
         )
         context.coordinator.requestIraqBuildings(on: mapView)
+        // Run after route and pitch updates so they cannot interrupt this tap.
+        context.coordinator.updateRecenterRequest(
+            isNavigationActive ? nil : recenterRequest,
+            on: mapView,
+            animated: !reduceMotion
+        )
     }
 
     final class Coordinator: NSObject, MLNMapViewDelegate {
         var lastSelectedPlaceID: String?
         var currentStyleURL: URL?
         var appliedRouteSignature: String?
+        private var pendingRecenterRequest: MapRecenterRequest?
+        private var lastAppliedRecenterID: UUID?
+        private var animateRecenter = false
+        private var routeCameraMode: RouteCameraPolicy.Mode = .overview
+        private var lastOverviewRouteID: UUID?
+        private var pendingOverviewRouteID: UUID?
+        private var pendingOverviewCoordinates: [GeoCoordinate] = []
+        private var animateOverview = false
         var latestRoute: RoutePlan?
         var latestAlternativeRoutes: [RoutePlan] = []
         var latestAlternativeLabels: [UUID: String] = [:]
@@ -181,6 +204,7 @@ struct OttuMapView: UIViewRepresentable {
         var onLongPress: (GeoCoordinate) -> Void
         var onCenterChanged: (GeoCoordinate) -> Void
         var onMapMotionChanged: (Bool) -> Void
+        var onUserInteraction: () -> Void
         var onSelectAlternativeRoute: (UUID) -> Void
         var onSelectParkedCar: () -> Void
         weak var iraqBuildingsManager: IraqBuildingFootprintsManager?
@@ -209,6 +233,7 @@ struct OttuMapView: UIViewRepresentable {
             onLongPress: @escaping (GeoCoordinate) -> Void,
             onCenterChanged: @escaping (GeoCoordinate) -> Void,
             onMapMotionChanged: @escaping (Bool) -> Void,
+            onUserInteraction: @escaping () -> Void,
             iraqBuildingsManager: IraqBuildingFootprintsManager,
             onSelectAlternativeRoute: @escaping (UUID) -> Void,
             onSelectParkedCar: @escaping () -> Void
@@ -216,6 +241,7 @@ struct OttuMapView: UIViewRepresentable {
             self.onLongPress = onLongPress
             self.onCenterChanged = onCenterChanged
             self.onMapMotionChanged = onMapMotionChanged
+            self.onUserInteraction = onUserInteraction
             self.iraqBuildingsManager = iraqBuildingsManager
             self.onSelectAlternativeRoute = onSelectAlternativeRoute
             self.onSelectParkedCar = onSelectParkedCar
@@ -245,6 +271,16 @@ struct OttuMapView: UIViewRepresentable {
         }
 
         func mapView(_ mapView: MLNMapView, regionWillChangeAnimated animated: Bool) {
+            // Camera animations also call this delegate; only actual gestures
+            // cancel a GPS fix that is still waiting to focus the map.
+            if mapView.gestureRecognizers?.contains(where: {
+                $0.state == .began || $0.state == .changed
+            }) == true {
+                pendingRecenterRequest = nil
+                pendingOverviewCoordinates = []
+                routeCameraMode = .browsing
+                onUserInteraction()
+            }
             onMapMotionChanged(true)
         }
 
@@ -255,9 +291,85 @@ struct OttuMapView: UIViewRepresentable {
             requestIraqBuildings(on: mapView)
         }
 
+        func updateRecenterRequest(_ request: MapRecenterRequest?, on mapView: MLNMapView, animated: Bool) {
+            pendingRecenterRequest = request
+            animateRecenter = animated
+            applyPendingRecenter(on: mapView)
+        }
+
+        private func applyPendingRecenter(on mapView: MLNMapView) {
+            guard !isNavigating, let request = pendingRecenterRequest,
+                  request.id != lastAppliedRecenterID,
+                  mapView.style != nil,
+                  mapView.bounds.width > 0, mapView.bounds.height > 0 else { return }
+            // Mark consumed before setCenter invokes region-change delegates.
+            lastAppliedRecenterID = request.id
+            pendingRecenterRequest = nil
+            mapView.setCenter(request.coordinate.clCoordinate, zoomLevel: 15, animated: animateRecenter)
+        }
+
+        func updateRouteOverview(
+            route: RoutePlan?,
+            origin: GeoCoordinate?,
+            destination: GeoCoordinate?,
+            on mapView: MLNMapView,
+            animated: Bool
+        ) {
+            guard RouteCameraPolicy.shouldFitOverview(
+                mode: routeCameraMode, routeID: route?.id, lastFittedRouteID: lastOverviewRouteID
+            ), let route else {
+                pendingOverviewCoordinates = []
+                return
+            }
+            pendingOverviewRouteID = route.id
+            pendingOverviewCoordinates = route.coordinates + [origin, destination].compactMap { $0 }
+            animateOverview = animated
+            applyPendingRouteOverview(on: mapView)
+        }
+
+        private func applyPendingRouteOverview(on mapView: MLNMapView) {
+            guard routeCameraMode == .overview,
+                  let routeID = pendingOverviewRouteID, routeID != lastOverviewRouteID,
+                  mapView.style != nil,
+                  mapView.bounds.width > 0, mapView.bounds.height > 0 else { return }
+            let coordinates = pendingOverviewCoordinates.filter {
+                $0.latitude.isFinite && $0.longitude.isFinite && CLLocationCoordinate2DIsValid($0.clCoordinate)
+            }
+            guard coordinates.count >= 2,
+                  let south = coordinates.map(\.latitude).min(),
+                  let north = coordinates.map(\.latitude).max(),
+                  let west = coordinates.map(\.longitude).min(),
+                  let east = coordinates.map(\.longitude).max() else { return }
+            let bounds = MLNCoordinateBounds(
+                sw: CLLocationCoordinate2D(latitude: south - 0.0002, longitude: west - 0.0002),
+                ne: CLLocationCoordinate2D(latitude: north + 0.0002, longitude: east + 0.0002)
+            )
+            let height = mapView.bounds.height
+            let padding = UIEdgeInsets(
+                top: min(height * 0.23, 210), left: 44,
+                bottom: min(height * (isNavigating ? 0.22 : 0.36), 330), right: 76
+            )
+            lastOverviewRouteID = routeID
+            pendingOverviewCoordinates = []
+            pendingOverviewRouteID = nil
+            // A flat, north-up overview keeps both endpoints and the full route visible.
+            var camera = mapView.camera
+            camera.pitch = 0
+            camera.heading = 0
+            mapView.setCamera(camera, animated: false)
+            mapView.setVisibleCoordinateBounds(bounds, edgePadding: padding, animated: animateOverview)
+        }
+
+        func mapViewDidFinishRenderingMap(_ mapView: MLNMapView, fullyRendered: Bool) {
+            // The first fix can arrive before style loading or view layout.
+            applyPendingRecenter(on: mapView)
+            applyPendingRouteOverview(on: mapView)
+        }
+
         func mapView(_ mapView: MLNMapView, viewFor annotation: MLNAnnotation) -> MLNAnnotationView? {
             if annotation is MLNUserLocation {
-                guard userLocationIcon != .arrow else { return nil }
+                // Render every selected glyph, including the arrow. Returning nil
+                // delegates to MapLibre's default location dot instead of our symbol.
                 let marker = UserLocationSymbolAnnotationView(icon: userLocationIcon)
                 userLocationSymbolView = marker
                 updateUserLocationSymbolHeading(on: mapView)
@@ -378,7 +490,6 @@ struct OttuMapView: UIViewRepresentable {
         }
 
         private func updateUserLocationSymbolHeading(on mapView: MLNMapView) {
-            guard userLocationIcon != .arrow else { return }
             let navigationHeading = isNavigating ? validCourse(navigationCourse) : nil
             let course = navigationHeading ?? validCourse(latestUserLocationCourse)
             let screenHeading = course.map {
@@ -480,6 +591,8 @@ struct OttuMapView: UIViewRepresentable {
                 force: true
             )
             applyNavigationCamera(on: mapView, animated: false)
+            applyPendingRecenter(on: mapView)
+            applyPendingRouteOverview(on: mapView)
             requestIraqBuildings(on: mapView, force: true)
         }
 
@@ -614,7 +727,9 @@ struct OttuMapView: UIViewRepresentable {
 
         func applyCameraMode(is3D: Bool, to mapView: MLNMapView, animated: Bool) {
             self.is3D = is3D
-            let targetPitch: CGFloat = isNavigating ? 58 : (is3D ? 40 : 0)
+            guard routeCameraMode != .browsing else { return }
+            let isRouteOverview = routeCameraMode == .overview && latestRoute != nil
+            let targetPitch: CGFloat = isNavigating && routeCameraMode == .following ? 58 : (isRouteOverview ? 0 : (is3D ? 40 : 0))
             guard abs(mapView.camera.pitch - targetPitch) > 0.5 else { return }
             var camera = mapView.camera
             camera.pitch = targetPitch
@@ -623,6 +738,7 @@ struct OttuMapView: UIViewRepresentable {
 
         func updateNavigationCamera(
             isActive: Bool,
+            mode: RouteCameraPolicy.Mode,
             coordinate: GeoCoordinate?,
             course: Double?,
             is3D: Bool,
@@ -631,19 +747,21 @@ struct OttuMapView: UIViewRepresentable {
         ) {
             let wasNavigating = isNavigating
             let needsCameraUpdate = isNavigating != isActive
+                || routeCameraMode != mode
                 || navigationCoordinate != coordinate
                 || navigationCourse != course
             isNavigating = isActive
+            routeCameraMode = mode
             navigationCoordinate = coordinate
             navigationCourse = course
             self.is3D = is3D
             applyCameraMode(is3D: is3D, to: mapView, animated: animated && needsCameraUpdate)
-            guard isActive else { return }
+            guard isActive, mode == .following, needsCameraUpdate else { return }
             applyNavigationCamera(on: mapView, animated: animated && !wasNavigating)
         }
 
         private func applyNavigationCamera(on mapView: MLNMapView, animated: Bool) {
-            guard isNavigating, let coordinate = navigationCoordinate else { return }
+            guard isNavigating, routeCameraMode == .following, let coordinate = navigationCoordinate else { return }
             let targetZoom = min(mapView.maximumZoomLevel, max(mapView.minimumZoomLevel, 17.2))
             mapView.setZoomLevel(targetZoom, animated: false)
             var camera = mapView.camera

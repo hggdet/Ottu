@@ -47,6 +47,33 @@ final class UserLocationTests: XCTestCase {
         XCTAssertEqual(subject.locationUpdateID, 0)
     }
 
+    func testNaNAccuracyFixIsNotPublished() {
+        let subject = UserLocationManager()
+        let coreLocationManager = CLLocationManager()
+        let invalid = location(latitude: 33.4, longitude: 44.4, timestamp: Date(), horizontalAccuracy: .nan)
+
+        subject.locationManager(coreLocationManager, didUpdateLocations: [invalid])
+
+        XCTAssertNil(subject.coordinate)
+        XCTAssertNil(subject.lastLocationTimestamp)
+        XCTAssertEqual(subject.locationUpdateID, 0)
+    }
+
+    func testRetryPolicyIsBoundedAndUsesExponentialDelays() {
+        XCTAssertEqual(UserLocationManager.retryDelay(afterFailureCount: 0), 1)
+        XCTAssertEqual(UserLocationManager.retryDelay(afterFailureCount: 1), 2)
+        XCTAssertEqual(UserLocationManager.retryDelay(afterFailureCount: 2), 4)
+        XCTAssertNil(UserLocationManager.retryDelay(afterFailureCount: 3))
+        XCTAssertNil(UserLocationManager.retryDelay(afterFailureCount: -1))
+    }
+
+    func testOnlyTransientCoreLocationErrorsAreRetryable() {
+        XCTAssertTrue(UserLocationManager.isRetryableLocationError(CLError(.locationUnknown)))
+        XCTAssertTrue(UserLocationManager.isRetryableLocationError(CLError(.network)))
+        XCTAssertFalse(UserLocationManager.isRetryableLocationError(CLError(.denied)))
+        XCTAssertFalse(UserLocationManager.isRetryableLocationError(NSError(domain: "test", code: 1)))
+    }
+
     func testBatchSelectsNewestValidFixInsteadOfInvalidNewestEntry() {
         let subject = UserLocationManager()
         let coreLocationManager = CLLocationManager()
@@ -101,6 +128,14 @@ final class UserLocationTests: XCTestCase {
             ),
             .none
         )
+    }
+
+    func testOneShotFixMustBeRecentEnoughToCompletePendingTap() {
+        let now = Date(timeIntervalSince1970: 1_000_000)
+        XCTAssertTrue(UserLocationManager.isRecentOneShotFix(timestamp: now, now: now))
+        XCTAssertTrue(UserLocationManager.isRecentOneShotFix(timestamp: now.addingTimeInterval(-60), now: now))
+        XCTAssertFalse(UserLocationManager.isRecentOneShotFix(timestamp: now.addingTimeInterval(-61), now: now))
+        XCTAssertFalse(UserLocationManager.isRecentOneShotFix(timestamp: now.addingTimeInterval(6), now: now))
     }
 
     private func location(

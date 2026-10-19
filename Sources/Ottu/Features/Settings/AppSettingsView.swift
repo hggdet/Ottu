@@ -19,10 +19,6 @@ struct AppSettingsView: View {
     @State private var shouldOfferAppSettings = false
     @State private var locationAlertTitleKey = "settings.location_unavailable_title"
     @State private var locationAlertMessageKey = "settings.location_unavailable_message"
-#if DEBUG
-    @State private var isReviewMapSettingsPresented = false
-#endif
-
     let savedPlaces: [Place]
     let communityPlaces: [Place]
     let offlineManager: OfflineMapManager
@@ -43,16 +39,20 @@ struct AppSettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Picker(selection: $selectedLanguage, label: Text(AppLocalization.string("settings.language", locale: interfaceLocale))) {
+                Picker(selection: $selectedLanguage) {
                     Text(AppLocalization.string("settings.language.system", locale: interfaceLocale)).tag("system")
                     Text(AppLocalization.string("settings.language.arabic", locale: interfaceLocale)).tag("ar")
                     Text(AppLocalization.string("settings.language.english", locale: interfaceLocale)).tag("en")
                     Text(AppLocalization.string("settings.language.kurdish", locale: interfaceLocale)).tag("ku")
+                } label: {
+                    AppLocalizedLabel("settings.language", systemImage: "globe", locale: interfaceLocale)
                 }
 
-                Picker(selection: $distanceUnit, label: Text(AppLocalization.string("settings.distance_unit", locale: interfaceLocale))) {
+                Picker(selection: $distanceUnit) {
                     Text(AppLocalization.string("settings.distance.kilometers", locale: interfaceLocale)).tag("km")
                     Text(AppLocalization.string("settings.distance.miles", locale: interfaceLocale)).tag("mi")
+                } label: {
+                    AppLocalizedLabel("settings.distance_unit", systemImage: "ruler", locale: interfaceLocale)
                 }
 
                 Picker(selection: $selectedAppearance, label: Text(AppLocalization.string("settings.appearance", locale: interfaceLocale))) {
@@ -61,15 +61,11 @@ struct AppSettingsView: View {
                     Label(AppLocalization.string("settings.appearance.dark", locale: interfaceLocale), systemImage: "moon").tag("dark")
                 }
 
-                NavigationLink {
-                    MapSettingsView(
-                        voiceLanguage: $navigationVoiceLanguage,
-                        mapDisplayMode: $mapDisplayMode,
-                        locale: interfaceLocale
-                    )
-                } label: {
-                    AppLocalizedLabel("map.settings.title", systemImage: "map", locale: interfaceLocale)
-                }
+                MapSettingsView(
+                    voiceLanguage: $navigationVoiceLanguage,
+                    mapDisplayMode: $mapDisplayMode,
+                    locale: interfaceLocale
+                )
 
                 Section {
                     Button(action: shareCurrentLocation) {
@@ -162,24 +158,9 @@ struct AppSettingsView: View {
                     }
                 }
             }
-#if DEBUG
-            .navigationDestination(isPresented: $isReviewMapSettingsPresented) {
-                MapSettingsView(
-                    voiceLanguage: $navigationVoiceLanguage,
-                    mapDisplayMode: $mapDisplayMode,
-                    locale: interfaceLocale
-                )
-            }
-#endif
         }
         .environment(\.locale, interfaceLocale)
         .environment(\.layoutDirection, isRightToLeft ? .rightToLeft : .leftToRight)
-#if DEBUG
-        .onAppear {
-            guard ProcessInfo.processInfo.arguments.contains("-ottuReviewMapSettings") else { return }
-            DispatchQueue.main.async { isReviewMapSettingsPresented = true }
-        }
-#endif
         .onChange(of: locationManager.locationUpdateID) { _, updateID in
             handleLocationUpdate(updateID)
         }

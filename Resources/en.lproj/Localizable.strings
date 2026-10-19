@@ -110,6 +110,14 @@
 "about.microsoft_status" = "Microsoft's official Iraq building footprints can be downloaded directly to this device as an optional package; the app does not use a private server. Only nearby features are processed for display.";
 "about.map_section" = "Map";
 "about.map_status" = "The existing basemap is unchanged. The optional building layer uses Microsoft data only; Google Open Buildings, ESA WorldCover, and Overture were not added. 3D extrusion is shown only where the source provides a positive height.";
+"about.map_icons_section" = "Map icon credits";
+"about.map_icons.location_pin" = "Location pin icon";
+"about.map_icons.ai" = "AI icon (black outline)";
+"about.map_icons.settings" = "Settings icon";
+"about.map_icons.category" = "Category icon";
+"about.map_icons.made_by" = "Icon made by";
+"about.map_icons.from" = "from";
+"about.map_icons_license" = "Flaticon icons are used under the Attribution license; each designer is credited below.";
 "settings.liquid_glass" = "Glass effect";
 "settings.manage_places" = "Manage local places";
 "settings.manage_maps" = "Manage offline maps";
@@ -243,6 +251,7 @@
 "navigation.eta" = "Time left";
 "navigation.distance_remaining" = "Distance left";
 "navigation.finish" = "End route";
+"navigation.resume_following" = "Resume";
 "navigation.street_unavailable" = "Follow the route to your destination";
 "navigation.remaining_minutes_format" = "%d min";
 "navigation.distance_km_format" = "%.1f km";

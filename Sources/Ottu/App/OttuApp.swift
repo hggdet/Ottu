@@ -5,9 +5,10 @@ struct OttuApp: App {
     @UIApplicationDelegateAdaptor(QuickActionAppDelegate.self) private var quickActionDelegate
     @AppStorage("ottu.language") private var selectedLanguage = "system"
     @AppStorage("ottu.appearance") private var selectedAppearance = "system"
-    @AppStorage("ottu.initialSetupCompleted") private var isInitialSetupComplete = false
     @AppStorage("ottu.welcomeMotionCompleted") private var hasSeenWelcomeMotion = false
+    // Existing users who finished the old setup should not see the intro again.
     @State private var shouldShowWelcomeMotion = !UserDefaults.standard.bool(forKey: "ottu.welcomeMotionCompleted")
+        && !UserDefaults.standard.bool(forKey: "ottu.initialSetupCompleted")
 
     private var interfaceLocale: Locale {
         selectedLanguage == "system" ? Locale.autoupdatingCurrent : Locale(identifier: selectedLanguage)
@@ -28,9 +29,7 @@ struct OttuApp: App {
     var body: some Scene {
         WindowGroup {
             Group {
-                if isInitialSetupComplete {
-                    MapHomeView(selectedLanguage: $selectedLanguage)
-                } else if shouldShowWelcomeMotion {
+                if shouldShowWelcomeMotion {
                     WelcomeMotionView {
                         withAnimation(.easeInOut(duration: 0.45)) {
                             shouldShowWelcomeMotion = false
@@ -40,7 +39,7 @@ struct OttuApp: App {
                         hasSeenWelcomeMotion = true
                     }
                 } else {
-                    FirstRunSetupView()
+                    MapHomeView(selectedLanguage: $selectedLanguage)
                 }
             }
                 .environment(\.locale, interfaceLocale)

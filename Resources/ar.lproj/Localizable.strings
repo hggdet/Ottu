@@ -110,6 +110,14 @@
 "about.microsoft_status" = "يمكن تنزيل بصمات المباني لكل العراق اختياريًا من ملفات Microsoft الرسمية مباشرة إلى الجهاز؛ لا يستخدم التطبيق خادمًا خاصًا. تُفلتر المعالم القريبة فقط عند عرضها.";
 "about.map_section" = "الخريطة";
 "about.map_status" = "أُبقيت خريطة الأساس الحالية كما هي. طبقة المباني الإضافية اختيارية ومن Microsoft فقط؛ لم تُضف Google Open Buildings أو ESA WorldCover أو Overture. يُبثق المبنى ثلاثي الأبعاد فقط عند توفر ارتفاع فعلي في بيانات المصدر.";
+"about.map_icons_section" = "اعتمادات أيقونات الخريطة";
+"about.map_icons.location_pin" = "أيقونة دبوس الموقع";
+"about.map_icons.ai" = "أيقونة الذكاء الاصطناعي (مخطط أسود)";
+"about.map_icons.settings" = "أيقونة الإعدادات";
+"about.map_icons.category" = "أيقونة التصنيف";
+"about.map_icons.made_by" = "أيقونة من تصميم";
+"about.map_icons.from" = "من";
+"about.map_icons_license" = "تُستخدم أيقونات Flaticon وفق رخصة الإسناد (Attribution)، مع ذكر المصممين أدناه.";
 "settings.liquid_glass" = "تأثير الزجاج";
 "settings.manage_places" = "إدارة الأماكن المحلية";
 "settings.manage_maps" = "إدارة الخرائط دون اتصال";
@@ -243,6 +251,7 @@
 "navigation.eta" = "الوقت المتبقي";
 "navigation.distance_remaining" = "المسافة المتبقية";
 "navigation.finish" = "إنهاء المسار";
+"navigation.resume_following" = "متابعة";
 "navigation.street_unavailable" = "اتبع المسار إلى وجهتك";
 "navigation.remaining_minutes_format" = "%d دقيقة";
 "navigation.distance_km_format" = "%.1f كم";

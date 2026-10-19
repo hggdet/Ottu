@@ -19,10 +19,19 @@ enum MapNavigationTab: String, CaseIterable, Identifiable {
 
     var icon: String {
         switch self {
-        case .location: "CurvedLocation"
-        case .assistant: "CurvedAssistant"
-        case .categories: "CurvedCategories"
-        case .settings: "CurvedSettings"
+        case .location: "FlaticonLocationPin"
+        case .assistant: "FlaticonAssistantOutline"
+        case .categories: "FlaticonCategories"
+        case .settings: "FlaticonSettings"
+        }
+    }
+
+    // Account for each original PNG's transparent margins and visual density.
+    var iconSize: CGFloat {
+        switch self {
+        case .location: 22
+        case .assistant: 20
+        case .categories, .settings: 24
         }
     }
 }
@@ -63,8 +72,8 @@ struct FloatingGlassNavigationBar: View {
                 .renderingMode(.template)
                 .resizable()
                 .scaledToFit()
-                .frame(width: 24, height: 24)
-                .foregroundStyle(isSelected ? Color.blue : Color.primary)
+                .frame(width: tab.iconSize, height: tab.iconSize)
+                .foregroundStyle(isSelected ? Color.green : Color.primary)
                 .frame(width: 46, height: 46)
                 .contentShape(Circle())
         }

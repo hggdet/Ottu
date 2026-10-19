@@ -110,6 +110,14 @@
 "about.microsoft_status" = "دەتوانرێت بە شێوەی ئارەزوومەندانە بصمەکانی بیناکانی عێراق لە فایلە فەرمییەکانی Microsoft ڕاستەوخۆ بۆ ئامێرەکە دابگیرێن؛ ئەپ خزمەتگوزاریی تایبەتی بەکارناهێنێت. تەنها تایبەتمەندییە نزیکەکان بۆ پیشاندان پرۆسێس دەکرێن.";
 "about.map_section" = "نەخشە";
 "about.map_status" = "نەخشەی بنەڕەتیی ئێستا وەک خۆی هێڵراوەتەوە. چینی بینای ئارەزوومەندانە تەنها داتای Microsoft بەکاردێنێت؛ Google Open Buildings و ESA WorldCover و Overture زیاد نەکراون. بیناکان تەنها کاتێک سێڕەهەندی دەبن کە سەرچاوەکە بەرزییەکی ئەرێنی دابین بکات.";
+"about.map_icons_section" = "دانپێدانان بە ئایکۆنەکانی نەخشە";
+"about.map_icons.location_pin" = "ئایکۆنی پینی شوێن";
+"about.map_icons.ai" = "ئایکۆنی AI (هێڵکاریی ڕەش)";
+"about.map_icons.settings" = "ئایکۆنی ڕێکخستنەکان";
+"about.map_icons.category" = "ئایکۆنی پۆل";
+"about.map_icons.made_by" = "ئایکۆن دروستکراوە لەلایەن";
+"about.map_icons.from" = "لە";
+"about.map_icons_license" = "ئایکۆنەکانی Flaticon بە مۆڵەتی Attribution بەکاردەهێنرێن؛ ناوی هەر دیزاینەرێک لە خوارەوە هاتووە.";
 "settings.liquid_glass" = "کاریگەریی شووشە";
 "settings.manage_places" = "بەڕێوەبردنی شوێنە ناوخۆییەکان";
 "settings.manage_maps" = "بەڕێوەبردنی نەخشەکانی بێ ئینتەرنێت";
@@ -243,6 +251,7 @@
 "navigation.eta" = "کاتی ماوە";
 "navigation.distance_remaining" = "دووری ماوە";
 "navigation.finish" = "کۆتاییهێنان بە ڕێگا";
+"navigation.resume_following" = "بەردەوامبوون";
 "navigation.street_unavailable" = "بەدوای ڕێگاکەدا بڕۆ بۆ گەیشتن بە مەبەست";
 "navigation.remaining_minutes_format" = "%d خولەک";
 "navigation.distance_km_format" = "%.1f کم";

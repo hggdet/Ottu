@@ -40,6 +40,7 @@ struct MapHomeView: View {
     @State private var rerouteTask: Task<Void, Never>?
     @State private var isNavigationActive = false
     @State private var isRerouting = false
+    @State private var routeCameraPolicy = RouteCameraPolicy()
     @State private var lastRerouteAt: Date?
     @State private var offRouteFixCount = 0
     @State private var spokenGuidanceIDs = Set<String>()
@@ -70,10 +71,14 @@ struct MapHomeView: View {
     @AppStorage("ottu.routing.transportMode") private var transportModeRawValue = RouteTransportMode.driving.rawValue
     @State private var isSearching = false
     @State private var isRouting = false
-    @State private var locateWhenReady = false
+    @State private var locationFocusPolicy = MapLocationFocusPolicy()
+    @State private var recenterRequest: MapRecenterRequest?
     @State private var pendingQuickPlaceSlot: QuickPlaceSlot?
     @State private var activeErrorTitle = ""
     @State private var activeErrorMessage: String?
+    @State private var activeErrorOffersLocationSettings = false
+    @State private var showsLocationExplanation = false
+    @AppStorage("ottu.locationExplanationDismissed") private var locationExplanationDismissed = false
     @State private var isWaitingToSaveCarLocation = false
     @State private var parkedCarLocationRequestTask: Task<Void, Never>?
     @FocusState private var searchFocused: Bool
@@ -113,8 +118,12 @@ struct MapHomeView: View {
                 styleURL: MapConfiguration.styleURL(isDark: colorScheme == .dark),
                 is3D: mapDisplayMode == "3d",
                 isNavigationActive: isNavigationActive,
+                routeCameraMode: routeCameraPolicy.mode,
+                isLocationAuthorized: locationManager.authorizationStatus == .authorizedAlways
+                    || locationManager.authorizationStatus == .authorizedWhenInUse,
                 navigationCoordinate: isNavigationActive ? (locationManager.coordinate ?? routePlan?.coordinates.first) : nil,
                 navigationCourse: isNavigationActive ? locationManager.course : nil,
+                recenterRequest: recenterRequest,
                 reduceMotion: reduceMotion,
                 iraqBuildingsManager: iraqBuildingsManager,
                 onSelectAlternativeRoute: selectPreviewRoute,
@@ -124,7 +133,11 @@ struct MapHomeView: View {
                     activeSheet = .addPlace(coordinate)
                 },
                 onCenterChanged: { mapCenter = $0 },
-                onMapMotionChanged: { isMapMoving = $0 }
+                onMapMotionChanged: { isMapMoving = $0 },
+                onUserInteraction: {
+                    cancelPendingLocationFocus()
+                    routeCameraPolicy.userDidMoveMap()
+                }
             )
             .ignoresSafeArea()
 
@@ -159,10 +172,25 @@ struct MapHomeView: View {
             HStack(spacing: 0) {
                 Spacer(minLength: 0)
                 if isNavigationActive {
-                    NavigationSpeedometerPill(
-                        speedKilometersPerHour: locationManager.speedMetersPerSecond.map { $0 * 3.6 },
-                        glassIntensity: liquidGlassIntensity
-                    )
+                    VStack(spacing: 12) {
+                        NavigationSpeedometerPill(
+                            speedKilometersPerHour: locationManager.speedMetersPerSecond.map { $0 * 3.6 },
+                            glassIntensity: liquidGlassIntensity
+                        )
+                        if routeCameraPolicy.mode != .following {
+                            Button {
+                                routeCameraPolicy.resumeFollowing()
+                            } label: {
+                                AppLocalizedLabel("navigation.resume_following", systemImage: "location.north")
+                                    .font(.subheadline.weight(.semibold))
+                                    .padding(.horizontal, 14)
+                                    .frame(minHeight: 46)
+                            }
+                            .buttonStyle(.plain)
+                            .glassEffect(.regular.interactive(), in: Capsule())
+                            .accessibilityIdentifier("navigation.resumeFollowing")
+                        }
+                    }
                     .offset(y: 28)
                     .transition(.move(edge: .trailing).combined(with: .opacity))
                 } else {
@@ -225,6 +253,9 @@ struct MapHomeView: View {
                             if !networkMonitor.isConnected {
                                 networkStatusBanner
                             }
+                            if showsLocationExplanation, locationManager.authorizationStatus == .notDetermined {
+                                locationExplanationBanner
+                            }
                             searchPanel(maxResultsHeight: max(180, geometry.size.height - 180))
                         }
                     }
@@ -249,11 +280,35 @@ struct MapHomeView: View {
                 .padding(.bottom, 6)
             }
         }
+        .task {
+            guard locationFocusPolicy.start() else { return }
+            applyPendingLocationFocus()
+            switch locationManager.authorizationStatus {
+            case .authorizedAlways, .authorizedWhenInUse:
+                locationManager.requestLocation()
+            case .notDetermined:
+                // Show the map and its nonblocking explanation before asking
+                // iOS automatically; no My Location tap is required.
+                do { try await Task.sleep(for: .milliseconds(450)) } catch { return }
+                guard !Task.isCancelled, !locationExplanationDismissed,
+                      locationManager.authorizationStatus == .notDetermined else { return }
+                showsLocationExplanation = true
+                do { try await Task.sleep(for: .milliseconds(900)) } catch { return }
+                guard !Task.isCancelled, showsLocationExplanation,
+                      !locationExplanationDismissed,
+                      locationManager.authorizationStatus == .notDetermined else { return }
+                locationExplanationDismissed = true
+                locationManager.requestLocation()
+            default:
+                cancelPendingLocationFocus()
+            }
+        }
         .task(id: searchTaskKey) {
             let taskKey = searchTaskKey
             await searchPlaces(for: query, taskKey: taskKey)
         }
         .onChange(of: locationManager.locationUpdateID) { _, _ in
+            applyPendingLocationFocus()
             guard let coordinate = navigationOrigin else { return }
             if isWaitingToSaveCarLocation {
                 isWaitingToSaveCarLocation = false
@@ -281,9 +336,16 @@ struct MapHomeView: View {
                 }
                 updateVoiceGuidance()
             }
-            guard locateWhenReady else { return }
-            locateWhenReady = false
-            focusMap(on: coordinate, named: AppLocalization.string("location.current", locale: locale))
+        }
+        .onChange(of: locationManager.authorizationStatus) { _, status in
+            if status != .notDetermined {
+                showsLocationExplanation = false
+            }
+            if status == .denied || status == .restricted {
+                cancelPendingLocationFocus()
+            } else {
+                applyPendingLocationFocus()
+            }
         }
         .onChange(of: navigationVoiceLanguage) { _, _ in
             guard isNavigationActive else { return }
@@ -330,14 +392,68 @@ struct MapHomeView: View {
         }
         .alert(Text(activeErrorTitle), isPresented: Binding(
             get: { activeErrorMessage != nil },
-            set: { if !$0 { activeErrorMessage = nil } }
+            set: {
+                if !$0 {
+                    activeErrorMessage = nil
+                    activeErrorOffersLocationSettings = false
+                }
+            }
         )) {
-            Button(role: .cancel) { activeErrorMessage = nil } label: {
+            if activeErrorOffersLocationSettings {
+                Button {
+                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(url)
+                    }
+                    activeErrorMessage = nil
+                    activeErrorOffersLocationSettings = false
+                } label: {
+                    AppLocalizedText("settings.open_app_settings")
+                }
+            }
+            Button(role: .cancel) {
+                activeErrorMessage = nil
+                activeErrorOffersLocationSettings = false
+            } label: {
                 AppLocalizedLabel("common.ok", systemImage: "checkmark")
             }
         } message: {
             Text(activeErrorMessage ?? "")
         }
+    }
+
+    private var locationExplanationBanner: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            AppLocalizedText("setup.location.message")
+                .font(.subheadline)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack {
+                Button {
+                    showsLocationExplanation = false
+                    locationExplanationDismissed = true
+                    locationFocusPolicy.request()
+                    applyPendingLocationFocus()
+                    locationManager.requestLocation()
+                } label: {
+                    AppLocalizedText("setup.location.allow")
+                        .fontWeight(.semibold)
+                        .padding(.vertical, 8)
+                }
+                Spacer(minLength: 12)
+                Button {
+                    showsLocationExplanation = false
+                    locationExplanationDismissed = true
+                    cancelPendingLocationFocus()
+                } label: {
+                    AppLocalizedText("setup.location.skip")
+                        .padding(.vertical, 8)
+                }
+            }
+            .font(.subheadline)
+            .buttonStyle(.plain)
+        }
+        .padding(14)
+        .mapGlassSurface(cornerRadius: 18, glassIntensity: liquidGlassIntensity)
+        .accessibilityIdentifier("map.locationExplanation")
     }
 
     @ViewBuilder
@@ -772,6 +888,8 @@ struct MapHomeView: View {
     }
 
     private func selectPlace(_ place: Place) {
+        cancelPendingLocationFocus()
+        routeCameraPolicy.beginOverview()
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
         localStore.addRecentPlace(place)
         searchFocused = false
@@ -1487,23 +1605,40 @@ struct MapHomeView: View {
     }
 
     private func centerOnMyLocation() {
-        if let coordinate = locationManager.coordinate {
-            focusMap(on: coordinate, named: AppLocalization.string("location.current", locale: locale))
-        } else {
-            locateWhenReady = true
-            locationManager.requestLocation()
+        if locationManager.authorizationStatus == .notDetermined {
+            showsLocationExplanation = true
+            return
         }
+        if locationManager.authorizationStatus == .denied || locationManager.authorizationStatus == .restricted {
+            cancelPendingLocationFocus()
+            activeErrorOffersLocationSettings = true
+            activeErrorTitle = AppLocalization.string("settings.location_permission_title", locale: locale)
+            activeErrorMessage = AppLocalization.string("settings.location_permission_message", locale: locale)
+            return
+        }
+        locationFocusPolicy.request()
+        applyPendingLocationFocus()
+        // If no usable fix exists, keep this single tap pending until GPS replies.
+        locationManager.requestLocation()
     }
 
-    private func focusMap(on coordinate: GeoCoordinate, named: String) {
-        focusedPlace = Place(
-            id: "focus-\(UUID().uuidString)",
-            name: named,
-            street: nil,
-            city: nil,
-            country: nil,
-            coordinate: coordinate
-        )
+    private func applyPendingLocationFocus() {
+        guard !isNavigationActive,
+              let request = locationFocusPolicy.consume(
+                coordinate: locationManager.coordinate,
+                timestamp: locationManager.lastLocationTimestamp,
+                accuracy: locationManager.horizontalAccuracyMeters,
+                isAuthorized: locationManager.authorizationStatus == .authorizedAlways
+                    || locationManager.authorizationStatus == .authorizedWhenInUse
+              ) else { return }
+        routePreviewTask?.cancel()
+        focusedPlace = nil
+        recenterRequest = request
+    }
+
+    private func cancelPendingLocationFocus() {
+        locationFocusPolicy.cancel()
+        recenterRequest = nil
     }
 
     private func checkForOffRouteLocation(_ coordinate: GeoCoordinate, routePlan: RoutePlan) {
@@ -1666,6 +1801,8 @@ struct MapHomeView: View {
     }
 
     private func beginActiveNavigation() {
+        cancelPendingLocationFocus()
+        routeCameraPolicy.beginOverview()
         routeProgressMeters = 0
         isNavigationActive = true
         locationManager.startNavigationTracking()

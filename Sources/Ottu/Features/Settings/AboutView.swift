@@ -42,8 +42,37 @@ struct AboutView: View {
             } header: {
                 AppLocalizedText("about.map_section")
             }
+
+            Section {
+                mapIconCredit("about.map_icons.location_pin", creator: "Freepik", creatorURL: "https://www.flaticon.com/authors/freepik")
+                mapIconCredit("about.map_icons.ai", creator: "FACH", creatorURL: "https://www.flaticon.com/authors/fach")
+                mapIconCredit("about.map_icons.settings", creator: "Phoenix Group", creatorURL: "https://www.flaticon.com/authors/phoenix-group")
+                mapIconCredit("about.map_icons.category", creator: "iconsax", creatorURL: "https://www.flaticon.com/authors/iconsax")
+            } header: {
+                AppLocalizedText("about.map_icons_section")
+            } footer: {
+                AppLocalizedText("about.map_icons_license")
+            }
         }
         .navigationTitle(Text(AppLocalization.string("about.title", locale: locale)))
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func mapIconCredit(_ roleKey: String, creator: String, creatorURL: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            AppLocalizedText(roleKey)
+                .font(.subheadline)
+
+            AppLocalizedText("about.map_icons.made_by")
+                .font(.footnote)
+            Link(creator, destination: URL(string: creatorURL)!)
+                .font(.footnote)
+
+            HStack(spacing: 4) {
+                AppLocalizedText("about.map_icons.from")
+                Link("Flaticon", destination: URL(string: "https://www.flaticon.com/")!)
+            }
+            .font(.footnote)
+        }
     }
 }

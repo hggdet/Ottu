@@ -39,7 +39,7 @@ struct FloatingMapControls: View {
                 .renderingMode(.template)
                 .resizable()
                 .scaledToFit()
-                .frame(width: 24, height: 24)
+                .frame(width: tab.iconSize, height: tab.iconSize)
                 .foregroundStyle(isSelected ? Color.green : Color.primary)
                 .frame(width: 46, height: 46)
                 .contentShape(Circle())

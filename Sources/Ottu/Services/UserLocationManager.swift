@@ -16,6 +16,8 @@ final class UserLocationManager: NSObject, ObservableObject, CLLocationManagerDe
     private let manager = CLLocationManager()
     private var isNavigationTracking = false
     private var hasPendingLocationRequest = false
+    private var retryTask: Task<Void, Never>?
+    private var retryFailureCount = 0
 
     override init() {
         authorizationStatus = manager.authorizationStatus
@@ -39,12 +41,15 @@ final class UserLocationManager: NSObject, ObservableObject, CLLocationManagerDe
     func requestLocation() {
         switch manager.authorizationStatus {
         case .notDetermined:
+            cancelRetry(resetFailureCount: true)
             hasPendingLocationRequest = true
             manager.requestWhenInUseAuthorization()
         case .authorizedAlways, .authorizedWhenInUse:
+            cancelRetry(resetFailureCount: true)
             hasPendingLocationRequest = true
             manager.requestLocation()
         case .denied, .restricted:
+            cancelRetry(resetFailureCount: true)
             hasPendingLocationRequest = false
         @unknown default:
             break
@@ -78,9 +83,10 @@ final class UserLocationManager: NSObject, ObservableObject, CLLocationManagerDe
                 manager.startUpdatingLocation()
             } else {
                 hasPendingLocationRequest = true
-                manager.requestLocation()
+                requestPendingOneShot()
             }
         case .denied, .restricted:
+            cancelRetry(resetFailureCount: true)
             hasPendingLocationRequest = false
         case .notDetermined:
             break
@@ -94,9 +100,22 @@ final class UserLocationManager: NSObject, ObservableObject, CLLocationManagerDe
         // not guaranteed to be ordered. Never let a delayed fix move the position
         // backwards in time or publish a location with invalid accuracy.
         guard let location = locations
-                .filter({ CLLocationCoordinate2DIsValid($0.coordinate) && $0.horizontalAccuracy >= 0 })
-                .max(by: { $0.timestamp < $1.timestamp }),
-              lastLocationTimestamp.map({ location.timestamp > $0 }) ?? true else { return }
+                .filter({
+                    CLLocationCoordinate2DIsValid($0.coordinate)
+                        && $0.coordinate.latitude.isFinite
+                        && $0.coordinate.longitude.isFinite
+                        && $0.horizontalAccuracy.isFinite
+                        && $0.horizontalAccuracy >= 0
+                })
+                .max(by: { $0.timestamp < $1.timestamp }) else {
+            retryUnusableOneShotFix()
+            return
+        }
+        guard !hasPendingLocationRequest || Self.isRecentOneShotFix(timestamp: location.timestamp),
+              lastLocationTimestamp.map({ location.timestamp > $0 }) ?? true else {
+            retryUnusableOneShotFix()
+            return
+        }
         coordinate = GeoCoordinate(latitude: location.coordinate.latitude, longitude: location.coordinate.longitude)
         course = location.course >= 0 ? location.course : nil
         speedMetersPerSecond = location.speed >= 0 ? location.speed : nil
@@ -104,11 +123,34 @@ final class UserLocationManager: NSObject, ObservableObject, CLLocationManagerDe
         lastLocationTimestamp = location.timestamp
         locationUpdateID += 1
         hasPendingLocationRequest = false
+        cancelRetry(resetFailureCount: true)
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        // الموقع اختياري؛ تظل الخريطة قابلة للاستخدام دون تفعيله. Keep a pending
-        // one-shot request so it can be retried if the app returns to foreground.
+        if let locationError = error as? CLError, locationError.code == .denied {
+            hasPendingLocationRequest = false
+            cancelRetry(resetFailureCount: true)
+            return
+        }
+        guard hasPendingLocationRequest, !isNavigationTracking,
+              Self.isRetryableLocationError(error),
+              let delay = Self.retryDelay(afterFailureCount: retryFailureCount) else { return }
+
+        retryFailureCount += 1
+        retryTask?.cancel()
+        retryTask = Task { [weak self] in
+            do {
+                try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            } catch {
+                return
+            }
+            guard let self, !Task.isCancelled,
+                  self.hasPendingLocationRequest, !self.isNavigationTracking,
+                  self.manager.authorizationStatus == .authorizedAlways
+                    || self.manager.authorizationStatus == .authorizedWhenInUse else { return }
+            self.retryTask = nil
+            self.manager.requestLocation()
+        }
     }
 
     @objc private func applicationDidBecomeActive() {
@@ -120,7 +162,7 @@ final class UserLocationManager: NSObject, ObservableObject, CLLocationManagerDe
         case .restartNavigationTracking:
             manager.startUpdatingLocation()
         case .retryLocationRequest:
-            manager.requestLocation()
+            requestPendingOneShot()
         case .none:
             break
         }
@@ -137,6 +179,38 @@ final class UserLocationManager: NSObject, ObservableObject, CLLocationManagerDe
         if isNavigationTracking { return .restartNavigationTracking }
         if hasPendingLocationRequest { return .retryLocationRequest }
         return .none
+    }
+
+    private func retryUnusableOneShotFix() {
+        guard hasPendingLocationRequest, !isNavigationTracking else { return }
+        locationManager(manager, didFailWithError: NSError(domain: kCLErrorDomain, code: CLError.Code.locationUnknown.rawValue))
+    }
+
+    static func isRecentOneShotFix(timestamp: Date, now: Date = Date()) -> Bool {
+        (-5...60).contains(now.timeIntervalSince(timestamp))
+    }
+
+    private func requestPendingOneShot() {
+        retryTask?.cancel()
+        retryTask = nil
+        manager.requestLocation()
+    }
+
+    private func cancelRetry(resetFailureCount: Bool) {
+        retryTask?.cancel()
+        retryTask = nil
+        if resetFailureCount { retryFailureCount = 0 }
+    }
+
+    static func retryDelay(afterFailureCount count: Int) -> TimeInterval? {
+        let delays: [TimeInterval] = [1, 2, 4]
+        guard delays.indices.contains(count) else { return nil }
+        return delays[count]
+    }
+
+    static func isRetryableLocationError(_ error: Error) -> Bool {
+        guard let locationError = error as? CLError else { return false }
+        return locationError.code == .locationUnknown || locationError.code == .network
     }
 }
 

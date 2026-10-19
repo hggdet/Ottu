@@ -193,6 +193,12 @@ extension RoutingProviding {
 }
 
 struct OSRMRouteService: RoutingProviding {
+    private let session: URLSession
+
+    init(session: URLSession = .shared) {
+        self.session = session
+    }
+
     func routes(
         from origin: GeoCoordinate,
         to destination: GeoCoordinate,
@@ -201,6 +207,7 @@ struct OSRMRouteService: RoutingProviding {
         waypoints: [GeoCoordinate] = []
     ) async throws -> [RoutePlan] {
         let orderedCoordinates = [origin] + waypoints + [destination]
+        guard orderedCoordinates.allSatisfy(isValidCoordinate) else { throw RouteError.invalidCoordinate }
         let coordinatePath = orderedCoordinates.map { "\($0.longitude),\($0.latitude)" }.joined(separator: ";")
         var components = URLComponents(url: URL(string: "\(mode.endpoint)\(coordinatePath)")!, resolvingAgainstBaseURL: false)
         components?.queryItems = [
@@ -212,7 +219,7 @@ struct OSRMRouteService: RoutingProviding {
         guard let url = components?.url else { throw RouteError.invalidURL }
         var request = URLRequest(url: url)
         request.timeoutInterval = 20
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             throw RouteError.badResponse
         }
@@ -221,15 +228,17 @@ struct OSRMRouteService: RoutingProviding {
         let plans = result.routes.compactMap { route -> RoutePlan? in
             let coordinates = route.geometry.coordinates.compactMap { pair -> GeoCoordinate? in
                 guard pair.count >= 2 else { return nil }
-                return GeoCoordinate(latitude: pair[1], longitude: pair[0])
+                let coordinate = GeoCoordinate(latitude: pair[1], longitude: pair[0])
+                return isValidCoordinate(coordinate) ? coordinate : nil
             }
-            guard coordinates.count >= 2 else { return nil }
+            guard coordinates.count == route.geometry.coordinates.count, coordinates.count >= 2 else { return nil }
 
             var distanceFromStart = 0.0
             let steps = route.legs.flatMap(\.steps).map { step -> RouteStep in
                 let stepCoordinate: GeoCoordinate?
                 if let location = step.maneuver.location, location.count >= 2 {
-                    stepCoordinate = GeoCoordinate(latitude: location[1], longitude: location[0])
+                    let coordinate = GeoCoordinate(latitude: location[1], longitude: location[0])
+                    stepCoordinate = isValidCoordinate(coordinate) ? coordinate : nil
                 } else {
                     stepCoordinate = nil
                 }
@@ -248,6 +257,12 @@ struct OSRMRouteService: RoutingProviding {
         guard !plans.isEmpty else { throw RouteError.noRoute }
         return plans
     }
+
+    private func isValidCoordinate(_ coordinate: GeoCoordinate) -> Bool {
+        coordinate.latitude.isFinite && coordinate.longitude.isFinite
+            && (-90...90).contains(coordinate.latitude)
+            && (-180...180).contains(coordinate.longitude)
+    }
 }
 
 private extension String {
@@ -256,12 +271,14 @@ private extension String {
 
 enum RouteError: LocalizedError {
     case invalidURL
+    case invalidCoordinate
     case badResponse
     case noRoute
 
     var errorDescription: String? {
         switch self {
         case .invalidURL: return "Invalid route request."
+        case .invalidCoordinate: return "A route location has invalid coordinates."
         case .badResponse: return "The routing service returned an error."
         case .noRoute: return "No route was found between these locations."
         }
