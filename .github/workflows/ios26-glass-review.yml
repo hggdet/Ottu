@@ -11,67 +11,124 @@ permissions:
 
 jobs:
   ios26-glass-review:
-    # macos-15 has supported Xcode 26 and iOS 26 runtimes; keep both checks
-    # mandatory while testing whether runner allocation is specific to macOS 26.
-    runs-on: macos-15
+    runs-on: macos-latest
     timeout-minutes: 60
 
     steps:
       - name: Check out source
         uses: actions/checkout@v4
 
-      - name: Select and verify Xcode 26
+      - name: Diagnose installed Xcode and simulator runtimes
+        shell: bash
+        run: |
+          mkdir -p artifacts/ios26-review/logs
+          echo '--- Xcode installations in /Applications ---'
+          ls /Applications | grep Xcode || true
+          echo '--- default Xcode ---'
+          xcodebuild -version || true
+          echo '--- available SDKs ---'
+          xcodebuild -showsdks || true
+          echo '--- default simulator runtimes ---'
+          xcrun simctl list runtimes || true
+
+      - name: Select newest installed Xcode compatible with iOS 26
         shell: bash
         run: |
           set -euo pipefail
-          candidates=()
-          for path in /Applications/Xcode_26*.app /Applications/Xcode.app; do
-            [[ -d "$path" ]] || continue
-            version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$path/Contents/Info.plist" 2>/dev/null || true)
-            [[ "$version" == 26.* ]] && candidates+=("$path")
-          done
-          if [[ ${#candidates[@]} -eq 0 ]]; then
-            echo 'No Xcode 26 installation was found on this runner.' >&2
-            ls -1 /Applications/Xcode*.app 2>/dev/null || true
-            exit 1
-          fi
-          last_index=$((${#candidates[@]} - 1))
-          XCODE_PATH="${candidates[$last_index]}"
+          XCODE_PATH="$(python3 - <<'PY'
+          import glob, plistlib, re, sys
+
+          def version_tuple(value):
+              match = re.match(r"(\d+(?:\.\d+)*)", value)
+              return tuple(int(part) for part in match.group(1).split(".")) if match else ()
+
+          candidates = []
+          for path in glob.glob("/Applications/Xcode*.app"):
+              try:
+                  with open(path + "/Contents/Info.plist", "rb") as stream:
+                      version = plistlib.load(stream)["CFBundleShortVersionString"]
+              except (OSError, KeyError, plistlib.InvalidFileException):
+                  continue
+              if version_tuple(version) >= (26, 0):
+                  candidates.append((version_tuple(version), path))
+
+          if not candidates:
+              sys.exit("No installed Xcode 26-or-newer app was found.")
+          print(max(candidates)[1])
+          PY
+          )"
           echo "Using $XCODE_PATH"
           sudo xcode-select --switch "$XCODE_PATH/Contents/Developer"
-          xcodebuild -version | tee xcode-version.txt
-          grep -Eq '^Xcode 26\.' xcode-version.txt
-          xcrun simctl list runtimes | tee ios-runtimes.txt
-          grep -q 'iOS 26\.' ios-runtimes.txt
+          xcodebuild -version | tee artifacts/ios26-review/logs/xcode-version.txt
+          xcodebuild -showsdks | tee artifacts/ios26-review/logs/available-sdks.txt
+          xcrun simctl list runtimes | tee artifacts/ios26-review/logs/ios-runtimes.txt
+          SDK_VERSION="$(xcrun --sdk iphonesimulator --show-sdk-version)"
+          python3 - "$SDK_VERSION" <<'PY'
+          import re, sys
+
+          def version_tuple(value):
+              return tuple(int(part) for part in value.split("."))
+
+          with open("project.yml", encoding="utf-8") as source:
+              text = source.read()
+          declared = re.search(r"(?m)^  deploymentTarget:\s*\n\s+iOS:\s*['\"]?([0-9.]+)", text)
+          configured = re.findall(r"(?m)^\s+IPHONEOS_DEPLOYMENT_TARGET:\s*['\"]?([0-9.]+)", text)
+          if not declared:
+              raise SystemExit("Could not read deploymentTarget.iOS from project.yml")
+          targets = sorted(set([declared.group(1), *configured]))
+          sdk = version_tuple(sys.argv[1])
+          print(f"iOS Simulator SDK: {sys.argv[1]}")
+          for target_text in targets:
+              target = version_tuple(target_text)
+              print(f"Configured iOS deployment target: {target_text}")
+              if target > sdk:
+                  raise SystemExit(f"Deployment target {target_text} is newer than simulator SDK {sys.argv[1]}.")
+          if sdk[0] < 26:
+              raise SystemExit(f"iOS 26 SDK is required for this review; found {sys.argv[1]}.")
+          PY
 
       - name: Install XcodeGen and generate project
         run: |
           brew install xcodegen
           xcodegen generate --spec project.yml
 
-      - name: Select an available iOS 26 iPhone simulator
+      - name: Select an available iPhone simulator on iOS 26 or newer
         id: simulator
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY' >> "$GITHUB_OUTPUT"
-          import json, subprocess, sys
+          import json, re, subprocess, sys
           data = json.loads(subprocess.check_output(
               ["xcrun", "simctl", "list", "devices", "available", "-j"], text=True))
-          choices = []
+          runtimes = []
           for runtime, devices in data["devices"].items():
-              if "iOS-26" not in runtime:
+              match = re.search(r"iOS-(\d+(?:-\d+)*)$", runtime)
+              if not match:
                   continue
+              version = tuple(int(part) for part in match.group(1).split("-"))
+              if version[0] < 26:
+                  continue
+              runtimes.append((version, runtime, devices))
+
+          selected = None
+          for version, runtime, devices in sorted(runtimes, reverse=True):
               for device in devices:
-                  if device["name"].startswith("iPhone"):
-                      choices.append((runtime, device["name"], device["udid"]))
-          if not choices:
-              raise SystemExit("No available iPhone simulator using an iOS 26 runtime.")
-          runtime, name, udid = sorted(choices, key=lambda row: (row[0], row[1]))[-1]
-          print(f"udid={udid}")
-          print(f"name={name}")
+                  if device.get("isAvailable") and device["name"].startswith("iPhone"):
+                      selected = (version, runtime, device)
+                      break
+              if selected:
+                  break
+
+          if not selected:
+              raise SystemExit("No available iPhone simulator on an installed iOS 26-or-newer runtime.")
+          version, runtime, device = selected
+          runtime_version = ".".join(str(part) for part in version)
+          print(f"udid={device['udid']}")
+          print(f"name={device['name']}")
           print(f"runtime={runtime}")
-          print(f"Selected {name} ({udid}) on {runtime}", file=sys.stderr)
+          print(f"runtime_version={runtime_version}")
+          print(f"Selected {device['name']} ({device['udid']}) on iOS {runtime_version} [{runtime}]", file=sys.stderr)
           PY
           mkdir -p artifacts/ios26-review/logs
 
@@ -80,11 +137,12 @@ jobs:
           SIMULATOR_UDID: ${{ steps.simulator.outputs.udid }}
           SIMULATOR_NAME: ${{ steps.simulator.outputs.name }}
           SIMULATOR_RUNTIME: ${{ steps.simulator.outputs.runtime }}
+          SIMULATOR_RUNTIME_VERSION: ${{ steps.simulator.outputs.runtime_version }}
         shell: bash
         run: |
           set -euo pipefail
-          printf 'Simulator: %s (%s), runtime %s\n' \
-            "$SIMULATOR_NAME" "$SIMULATOR_UDID" "$SIMULATOR_RUNTIME" \
+          printf 'Simulator: %s (%s), runtime %s (%s)\n' \
+            "$SIMULATOR_NAME" "$SIMULATOR_UDID" "$SIMULATOR_RUNTIME" "$SIMULATOR_RUNTIME_VERSION" \
             | tee artifacts/ios26-review/logs/simulator.txt
           xcrun simctl boot "$SIMULATOR_UDID" || true
           xcrun simctl bootstatus "$SIMULATOR_UDID" -b
