@@ -17,26 +17,27 @@ final class HomeScreenQuickActionsTests: XCTestCase {
         }
     }
 
-    func testMailDraftPreservesUnicodeAndReservedCharacters() throws {
+    func testReportDraftHasNoRecipientAndPreservesUnicode() throws {
         let subject = "إبلاغ وين & ملاحظة؟ #1"
-        let body = "هلا فريق وين،\n\nA+B & cc=not-a-recipient@example.com?"
-        let url = try XCTUnwrap(SupportContact.mailURL(subject: subject, body: body))
+        let body = "هلا فريق وين،\n\nA+B & cc=none?"
+        let url = try XCTUnwrap(SupportContact.reportDraftURL(subject: subject, body: body))
         let components = try XCTUnwrap(URLComponents(url: url, resolvingAgainstBaseURL: false))
         XCTAssertEqual(components.scheme, "mailto")
-        XCTAssertEqual(components.path, SupportContact.email)
+        XCTAssertEqual(components.path, "")
         XCTAssertEqual(components.queryItems, [URLQueryItem(name: "subject", value: subject),
                                               URLQueryItem(name: "body", value: body)])
         XCTAssertNil(components.host)
     }
 
-    func testExistingSupportAddressIsReused() {
-        XCTAssertEqual(SupportContact.email, "pbgpfk7ofwz729ekxamzqk@onmanus.ai")
+    func testReportDraftURLDoesNotUseAnAddress() throws {
+        let url = try XCTUnwrap(SupportContact.reportDraftURL(subject: "Help", body: "Report"))
+        XCTAssertEqual(URLComponents(url: url, resolvingAgainstBaseURL: false)?.path, "")
     }
 
     func testAllActionStringsAreLocalized() throws {
         let keys = ["quick_action.support.title", "quick_action.support.subtitle",
                     "quick_action.support.subject", "quick_action.support.body",
-                    "quick_action.support.unavailable", "quick_action.support.copy",
+                    "quick_action.support.unavailable",
                     "quick_action.stay.title", "quick_action.stay.subtitle",
                     "quick_action.stay.message", "quick_action.stay.keep"]
         for language in ["ar", "en", "ku"] {

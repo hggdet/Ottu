@@ -328,8 +328,7 @@
 "quick_action.support.subtitle" = "We’re here to listen";
 "quick_action.support.subject" = "Wain report or suggestion";
 "quick_action.support.body" = "Hi Wain team,\n\nI have a problem or suggestion:\n\n";
-"quick_action.support.unavailable" = "We couldn’t open a mail app. You can copy the support address and contact us when it suits you.";
-"quick_action.support.copy" = "Copy support email";
+"quick_action.support.unavailable" = "We couldn’t open a mail app. The report draft has no recipient; add a public support address before sending.";
 "quick_action.stay.title" = "Why delete me? 😢";
 "quick_action.stay.subtitle" = "Our journey has just begun";
 "quick_action.stay.message" = "Our journey has just begun! If something’s bothering you, tell us so we can try to improve it. We’re happy you’re here, and the choice is always yours.";

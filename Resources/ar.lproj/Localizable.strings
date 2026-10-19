@@ -328,8 +328,7 @@
 "quick_action.support.subtitle" = "خلّينا نسمع منك";
 "quick_action.support.subject" = "إبلاغ أو اقتراح لتطبيق وين";
 "quick_action.support.body" = "هلا فريق وين،\n\nعندي مشكلة أو اقتراح:\n\n";
-"quick_action.support.unavailable" = "ما قدرنا نفتح تطبيق البريد. تگدر تنسخ عنوان الدعم وتتواصل ويانا بوقتك.";
-"quick_action.support.copy" = "نسخ إيميل الدعم";
+"quick_action.support.unavailable" = "ما قدرنا نفتح تطبيق البريد. مسودة البلاغ محفوظة بلا مستلم؛ أضف عنوان الدعم العام قبل الإرسال.";
 "quick_action.stay.title" = "ليش تحذفني؟ 😢";
 "quick_action.stay.subtitle" = "بعدنا بأول الطريق سوا";
 "quick_action.stay.message" = "بعدنا بأول الطريق سوا! إذا شي مضايقك، احچيلنا ونحاول نحسّنه. وجودك ويانا يفرّحنا، والقرار إلك بكل محبة.";

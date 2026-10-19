@@ -2,14 +2,11 @@ import SwiftUI
 import UIKit
 import MessageUI
 
-/// Keep the Home Screen menu and Settings pointed at the same existing support inbox.
+/// Report drafts intentionally have no recipient until a public support address is provided.
 enum SupportContact {
-    static let email = "pbgpfk7ofwz729ekxamzqk@onmanus.ai"
-
-    static func mailURL(subject: String, body: String) -> URL? {
+    static func reportDraftURL(subject: String, body: String) -> URL? {
         var components = URLComponents()
         components.scheme = "mailto"
-        components.path = email
         components.queryItems = [
             URLQueryItem(name: "subject", value: subject),
             URLQueryItem(name: "body", value: body)
@@ -143,11 +140,11 @@ final class QuickActionSceneDelegate: NSObject, UIWindowSceneDelegate, MFMailCom
         if MFMailComposeViewController.canSendMail() {
             let composer = MFMailComposeViewController()
             composer.mailComposeDelegate = self
-            composer.setToRecipients([SupportContact.email])
+            composer.setToRecipients([])
             composer.setSubject(subject)
             composer.setMessageBody(body, isHTML: false)
             presenter.present(composer, animated: true)
-        } else if let url = SupportContact.mailURL(subject: subject, body: body) {
+        } else if let url = SupportContact.reportDraftURL(subject: subject, body: body) {
             // Opens a draft in the user's mail app. Never sends a message automatically.
             UIApplication.shared.open(url, options: [:]) { [weak self, weak presenter] opened in
                 guard !opened else { return }
@@ -163,11 +160,8 @@ final class QuickActionSceneDelegate: NSObject, UIWindowSceneDelegate, MFMailCom
 
     private func presentMailUnavailable(from presenter: UIViewController) {
         let alert = UIAlertController(title: text("quick_action.support.title"),
-                                      message: text("quick_action.support.unavailable") + "\n\n" + SupportContact.email,
+                                      message: text("quick_action.support.unavailable"),
                                       preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: text("quick_action.support.copy"), style: .default) { _ in
-            UIPasteboard.general.string = SupportContact.email
-        })
         alert.addAction(UIAlertAction(title: text("common.ok"), style: .cancel))
         presenter.present(alert, animated: true)
     }

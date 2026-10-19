@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 KEYS = {
     "quick_action.support.title", "quick_action.support.subtitle",
     "quick_action.support.subject", "quick_action.support.body",
-    "quick_action.support.unavailable", "quick_action.support.copy",
+    "quick_action.support.unavailable",
     "quick_action.stay.title", "quick_action.stay.subtitle",
     "quick_action.stay.message", "quick_action.stay.keep",
 }
@@ -79,14 +79,16 @@ class QuickActionResourcesTests(unittest.TestCase):
         self.assertIn("القرار إلك", ar["quick_action.stay.message"])
         self.assertIn("\n\n", ar["quick_action.support.body"])
 
-    def test_support_address_is_not_invented(self):
-        previous_settings = subprocess.check_output(
-            ["git", "show", "HEAD:Sources/Ottu/Features/Settings/AppSettingsView.swift"], cwd=ROOT, text=True
-        )
-        address = re.search(r'mailto:([^"\s]+)', previous_settings).group(1)
-        self.assertIn(f'static let email = "{address}"', self.source)
+    def test_report_draft_has_no_personal_recipient(self):
+        self.assertIn("static func reportDraftURL(subject: String, body: String)", self.source)
+        self.assertIn('components.scheme = "mailto"', self.source)
+        self.assertNotIn("components.path =", self.source)
+        self.assertNotIn("pbgpfk7ofwz729ekxamzqk@onmanus.ai", self.source)
+        self.assertNotIn("SupportContact.email", self.source)
+        self.assertIn("composer.setToRecipients([])", self.source)
         settings = (ROOT / "Sources/Ottu/Features/Settings/AppSettingsView.swift").read_text()
-        self.assertIn("SupportContact.mailURL(", settings)
+        self.assertNotIn("SupportContact.mailURL(", settings)
+        self.assertNotIn('settings.contact_report', settings)
         self.assertIn("composer.mailComposeDelegate = self", self.source)
         self.assertIn("MFMailComposeViewController.canSendMail()", self.source)
 

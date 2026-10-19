@@ -136,7 +136,7 @@ jobs:
               | tee artifacts/ios26-review/logs/map-preflight.txt
           fi
 
-      - name: Install and launch Arabic home screen
+      - name: Capture welcome and first-run setup, then launch Arabic home
         env:
           SIMULATOR_UDID: ${{ steps.simulator.outputs.udid }}
         shell: bash
@@ -145,17 +145,46 @@ jobs:
           APP_PATH='build/ios26-derived/Build/Products/Debug-iphonesimulator/Ottu.app'
           test -d "$APP_PATH"
           xcrun simctl terminate "$SIMULATOR_UDID" iq.ottu.ios || true
+          xcrun simctl uninstall "$SIMULATOR_UDID" iq.ottu.ios || true
           xcrun simctl install "$SIMULATOR_UDID" "$APP_PATH"
-          # Installation/test-host launches may reset TCC. Grant only after the
-          # final install so the permission alert cannot cover review screenshots.
+          xcrun simctl ui "$SIMULATOR_UDID" appearance light
+          xcrun simctl spawn "$SIMULATOR_UDID" defaults write iq.ottu.ios ottu.language -string ar
+          xcrun simctl spawn "$SIMULATOR_UDID" defaults write iq.ottu.ios ottu.appearance -string light
+          # Fresh install intentionally shows the real welcome animation followed
+          # by the first location-permission setup step.
+          xcrun simctl launch "$SIMULATOR_UDID" iq.ottu.ios \
+            -ottu.language ar -ottu.appearance light \
+            2>&1 | tee artifacts/ios26-review/logs/launch-welcome.log
+          sleep 0.4
+          xcrun simctl io "$SIMULATOR_UDID" screenshot \
+            artifacts/ios26-review/ottu-ios26-welcome-car.png
+          test -s artifacts/ios26-review/ottu-ios26-welcome-car.png
+          sleep 1.9
+          xcrun simctl io "$SIMULATOR_UDID" screenshot \
+            artifacts/ios26-review/ottu-ios26-welcome-phrase.png
+          test -s artifacts/ios26-review/ottu-ios26-welcome-phrase.png
+          sleep 4.5
+          for step in location language notifications distance; do
+            xcrun simctl terminate "$SIMULATOR_UDID" iq.ottu.ios || true
+            xcrun simctl launch "$SIMULATOR_UDID" iq.ottu.ios \
+              -ottu.language ar -ottu.appearance light \
+              "-ottuReviewSetupStep=$step" \
+              2>&1 | tee "artifacts/ios26-review/logs/launch-setup-$step.log"
+            sleep 1
+            xcrun simctl io "$SIMULATOR_UDID" screenshot \
+              "artifacts/ios26-review/ottu-ios26-first-run-$step.png"
+            test -s "artifacts/ios26-review/ottu-ios26-first-run-$step.png"
+          done
+          for image in artifacts/ios26-review/ottu-ios26-welcome-*.png artifacts/ios26-review/ottu-ios26-first-run-*.png; do
+            sips -g pixelWidth -g pixelHeight "$image"
+          done | tee artifacts/ios26-review/logs/screenshot-onboarding-dimensions.txt
+          xcrun simctl terminate "$SIMULATOR_UDID" iq.ottu.ios || true
+          # Now prepare deterministic home/settings captures after first-run screenshots.
           xcrun simctl privacy "$SIMULATOR_UDID" grant location iq.ottu.ios
           xcrun simctl privacy "$SIMULATOR_UDID" grant location-always iq.ottu.ios
           xcrun simctl location "$SIMULATOR_UDID" set 33.3152,44.3661
-          xcrun simctl ui "$SIMULATOR_UDID" appearance light
-          # These are the app's existing @AppStorage keys. Mark first run complete
-          # to bypass WelcomeMotionView and FirstRunSetupView without app changes.
-          # Try simulator defaults first; argv overrides below also guarantee
-          # the values when Simulator defaults writes are sandbox-restricted.
+          # These are the app's existing @AppStorage keys. Bypass first-run only
+          # for the subsequent map and settings captures.
           xcrun simctl spawn "$SIMULATOR_UDID" defaults write iq.ottu.ios ottu.initialSetupCompleted -bool YES || true
           xcrun simctl spawn "$SIMULATOR_UDID" defaults write iq.ottu.ios ottu.welcomeMotionCompleted -bool YES || true
           xcrun simctl spawn "$SIMULATOR_UDID" defaults write iq.ottu.ios ottu.language -string ar || true

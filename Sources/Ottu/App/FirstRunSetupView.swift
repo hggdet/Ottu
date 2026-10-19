@@ -7,7 +7,7 @@ struct FirstRunSetupView: View {
     @AppStorage("ottu.distanceUnit") private var storedDistanceUnit = "km"
 
     @StateObject private var locationManager = UserLocationManager()
-    @State private var step: SetupStep = .location
+    @State private var step: SetupStep = Self.reviewStep
     @State private var languageChoice = FirstRunSetupView.preferredLanguage
     @State private var distanceChoice = "km"
     @State private var isRequestingNotifications = false
@@ -19,6 +19,20 @@ struct FirstRunSetupView: View {
             return preferredCode
         }
         return "ar"
+    }
+
+    private static var reviewStep: SetupStep {
+#if DEBUG
+        if let argument = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("-ottuReviewSetupStep=") }) {
+            switch argument.replacingOccurrences(of: "-ottuReviewSetupStep=", with: "") {
+            case "language": return .language
+            case "notifications": return .notifications
+            case "distance": return .distance
+            default: return .location
+            }
+        }
+#endif
+        return .location
     }
 
     private var setupLocale: Locale {
