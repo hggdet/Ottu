@@ -2,6 +2,7 @@ import SwiftUI
 
 @main
 struct OttuApp: App {
+    @UIApplicationDelegateAdaptor(QuickActionAppDelegate.self) private var quickActionDelegate
     @AppStorage("ottu.language") private var selectedLanguage = "system"
     @AppStorage("ottu.appearance") private var selectedAppearance = "system"
     @AppStorage("ottu.initialSetupCompleted") private var isInitialSetupComplete = false

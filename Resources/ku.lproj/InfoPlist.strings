@@ -1,2 +1,7 @@
 "CFBundleDisplayName" = "وين";
 "NSLocationWhenInUseUsageDescription" = "وين شوێنی تۆ بەکاردەهێنێت بۆ پیشاندانی شوێنی ئێستات و دۆزینەوەی ئاڕاستەکان لە شوێنی تۆوە.";
+
+"quick_action.support.title" = "ڕاپۆرت یان یارمەتی";
+"quick_action.support.subtitle" = "ئێمە گوێت لێ دەگرین";
+"quick_action.stay.title" = "بۆچی دەمسڕیتەوە؟ 😢";
+"quick_action.stay.subtitle" = "تازە گەشتەکەمان دەستی پێ کردووە";

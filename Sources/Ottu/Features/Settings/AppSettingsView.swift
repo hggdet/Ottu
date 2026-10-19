@@ -138,8 +138,13 @@ struct AppSettingsView: View {
                 } label: {
                     Label(AppLocalization.string("settings.about", locale: interfaceLocale), systemImage: "info.circle")
                 }
-                Link(destination: URL(string: "mailto:pbgpfk7ofwz729ekxamzqk@onmanus.ai")!) {
-                    Label(AppLocalization.string("settings.contact_report", locale: interfaceLocale), systemImage: "envelope")
+                if let supportURL = SupportContact.mailURL(
+                    subject: AppLocalization.string("quick_action.support.subject", locale: interfaceLocale),
+                    body: AppLocalization.string("quick_action.support.body", locale: interfaceLocale)
+                ) {
+                    Link(destination: supportURL) {
+                        Label(AppLocalization.string("settings.contact_report", locale: interfaceLocale), systemImage: "envelope")
+                    }
                 }
             }
             .navigationTitle(Text(AppLocalization.string("settings.title", locale: interfaceLocale)))

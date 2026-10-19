@@ -55,15 +55,11 @@ struct FirstRunSetupView: View {
                         .accessibilityHidden(true)
 
                     VStack(spacing: 9) {
-                        AppLocalizedText(step.titleKey, locale: setupLocale)
+                        stableStepText(isTitle: true)
                             .font(.title2.weight(.bold))
-                            .multilineTextAlignment(.center)
-
-                        AppLocalizedText(step.messageKey, locale: setupLocale)
+                        stableStepText(isTitle: false)
                             .font(.body)
                             .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.center)
-                            .fixedSize(horizontal: false, vertical: true)
                     }
                     .frame(maxWidth: 440)
 
@@ -78,31 +74,36 @@ struct FirstRunSetupView: View {
 
             VStack(spacing: 12) {
                 Button(action: performPrimaryAction) {
-                    HStack(spacing: 9) {
-                        if isRequestingNotifications {
-                            ProgressView().tint(.white)
+                    ZStack {
+                        ForEach(["setup.location.allow", "setup.continue", "setup.notifications.allow", "setup.finish"], id: \.self) { key in
+                            AppLocalizedText(key, locale: setupLocale)
+                                .hidden()
+                                .accessibilityHidden(true)
                         }
                         AppLocalizedText(primaryButtonTitle, locale: setupLocale)
-                            .fontWeight(.semibold)
                     }
+                    .fontWeight(.semibold)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 32)
+                    .padding(.vertical, 12)
                     .frame(maxWidth: .infinity)
                     .frame(minHeight: 54)
+                    .overlay(alignment: .leading) {
+                        if isRequestingNotifications {
+                            ProgressView()
+                                .tint(.white)
+                                .padding(.horizontal, 12)
+                                .accessibilityHidden(true)
+                        }
+                    }
                     .foregroundStyle(.white)
                     .background(Color.accentColor, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
                 .buttonStyle(.plain)
                 .disabled(isRequestingNotifications)
 
-                if showsSecondaryAction {
-                    Button(action: performSecondaryAction) {
-                        AppLocalizedText(secondaryButtonTitle, locale: setupLocale)
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity)
-                            .frame(minHeight: 40)
-                    }
-                    .buttonStyle(.plain)
-                }
+                secondaryActionSlot
             }
             .frame(maxWidth: 440)
             .padding(.top, 14)
@@ -142,6 +143,51 @@ struct FirstRunSetupView: View {
         case .location, .notifications:
             EmptyView()
         }
+    }
+
+    private func stableStepText(isTitle: Bool) -> some View {
+        // Reserve title and description independently so neither moves when
+        // another step needs more lines, including at accessibility text sizes.
+        ZStack(alignment: .top) {
+            ForEach(SetupStep.allCases, id: \.self) { candidate in
+                AppLocalizedText(isTitle ? candidate.titleKey : candidate.messageKey, locale: setupLocale)
+                    .hidden()
+                    .accessibilityHidden(true)
+            }
+            AppLocalizedText(isTitle ? step.titleKey : step.messageKey, locale: setupLocale)
+        }
+        .multilineTextAlignment(.center)
+        .frame(maxWidth: 440)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var secondaryActionSlot: some View {
+        ZStack {
+            secondaryButtonLabel("setup.location.skip")
+                .hidden()
+                .accessibilityHidden(true)
+            secondaryButtonLabel("setup.notifications.skip")
+                .hidden()
+                .accessibilityHidden(true)
+
+            if showsSecondaryAction {
+                Button(action: performSecondaryAction) {
+                    secondaryButtonLabel(secondaryButtonTitle)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .frame(maxWidth: 440)
+    }
+
+    private func secondaryButtonLabel(_ key: String) -> some View {
+        AppLocalizedText(key, locale: setupLocale)
+            .font(.subheadline.weight(.medium))
+            .foregroundStyle(.secondary)
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: .infinity)
+            .frame(minHeight: 40)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     private func choiceRow(_ title: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
@@ -222,18 +268,16 @@ struct FirstRunSetupView: View {
     }
 
     private func advance() {
-        withAnimation(.easeInOut(duration: 0.2)) {
-            switch step {
-            case .location: step = .language
-            case .language: step = .notifications
-            case .notifications: step = .distance
-            case .distance: break
-            }
+        switch step {
+        case .location: step = .language
+        case .language: step = .notifications
+        case .notifications: step = .distance
+        case .distance: break
         }
     }
 }
 
-private enum SetupStep {
+private enum SetupStep: CaseIterable {
     case location
     case language
     case notifications

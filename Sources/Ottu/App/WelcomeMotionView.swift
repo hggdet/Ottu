@@ -26,16 +26,21 @@ struct WelcomeMotionView: View {
 
             ZStack {
                 if phase == .icons {
-                    Image(systemName: icons[iconIndex])
-                        .font(.system(size: 88, weight: .medium))
-                        .symbolRenderingMode(.monochrome)
-                        .contentTransition(.symbolEffect(.replace))
-                        .foregroundStyle(Color.black)
-                        .frame(width: 176, height: 176)
-                        .opacity(iconHasAppeared ? 1 : 0)
-                        .blur(radius: iconHasAppeared ? 0 : 12)
-                        .scaleEffect(iconHasAppeared ? 1 : 0.9)
-                        .accessibilityLabel(iconAccessibilityLabel)
+                    ZStack {
+                        Image(systemName: icons[iconIndex])
+                            .font(.system(size: 88, weight: .medium))
+                            .symbolRenderingMode(.monochrome)
+                            .foregroundStyle(Color.black)
+                            .id(iconIndex)
+                            .transition(iconMorphTransition)
+                    }
+                    .frame(width: 176, height: 176)
+                    .opacity(iconHasAppeared ? 1 : 0)
+                    .blur(radius: iconHasAppeared ? 0 : 12)
+                    .scaleEffect(iconHasAppeared ? 1 : 0.7)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(iconAccessibilityLabel)
+                    .transition(blurMorphTransition)
                 } else if phase == .question {
                     question
                         .transition(blurMorphTransition)
@@ -53,25 +58,29 @@ struct WelcomeMotionView: View {
     }
 
     private var question: some View {
-        HStack(spacing: 6) {
-            Text("وين انت")
-                .fixedSize()
-
-            ZStack {
-                Text(phraseEndings[phraseIndex])
-                    .id(phraseIndex)
-                    .transition(blurMorphTransition)
+        // Measure complete sentences, not a fixed-width ending. The leading
+        // edge stays anchored in RTL while Arabic shaping and spacing stay native.
+        ZStack(alignment: .leading) {
+            ForEach(phraseEndings, id: \.self) { ending in
+                Text("وين انت \(ending)")
+                    .hidden()
+                    .accessibilityHidden(true)
             }
-            .frame(width: 154, height: 54, alignment: .center)
+
+            Text("وين انت \(phraseEndings[phraseIndex])")
+                .id(phraseIndex)
+                .transition(.opacity)
         }
         .environment(\.layoutDirection, .rightToLeft)
         .font(.system(size: 34, weight: .bold, design: .rounded))
         .foregroundStyle(Color.black)
-        .multilineTextAlignment(.center)
+        .lineLimit(1)
+        .minimumScaleFactor(0.65)
+        .multilineTextAlignment(.leading)
         .frame(maxWidth: .infinity, alignment: .center)
+        .padding(.horizontal, 24)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("وين انت \(phraseEndings[phraseIndex])")
-        .animation(.easeInOut(duration: 0.38), value: phraseIndex)
     }
 
     private var brand: some View {
@@ -85,6 +94,19 @@ struct WelcomeMotionView: View {
             .multilineTextAlignment(.center)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
             .accessibilityLabel("استخدم تطبيق وين")
+    }
+
+    private var iconMorphTransition: AnyTransition {
+        .asymmetric(
+            insertion: .modifier(
+                active: BlurScaleOpacityModifier(blur: 14, scale: 0.55, opacity: 0, rotation: .degrees(-18)),
+                identity: BlurScaleOpacityModifier(blur: 0, scale: 1, opacity: 1)
+            ),
+            removal: .modifier(
+                active: BlurScaleOpacityModifier(blur: 12, scale: 1.35, opacity: 0, rotation: .degrees(14)),
+                identity: BlurScaleOpacityModifier(blur: 0, scale: 1, opacity: 1)
+            )
+        )
     }
 
     private var blurMorphTransition: AnyTransition {
@@ -119,43 +141,35 @@ struct WelcomeMotionView: View {
             return
         }
 
-        withAnimation(.easeInOut(duration: 0.8)) {
+        withAnimation(.easeOut(duration: 0.32)) {
             iconHasAppeared = true
         }
-        guard await wait(for: .milliseconds(800)) else { return }
-
-        let iconIntervals: [Duration] = [
-            .milliseconds(620),
-            .milliseconds(620),
-            .milliseconds(620),
-            .milliseconds(680)
-        ]
+        guard await wait(for: .milliseconds(500)) else { return }
 
         for nextIndex in icons.indices.dropFirst() {
-            withAnimation(.spring(response: 0.34, dampingFraction: 0.82)) {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.86)) {
                 iconIndex = nextIndex
             }
-            guard await wait(for: iconIntervals[nextIndex - 1]) else { return }
+            guard await wait(for: .milliseconds(400)) else { return }
         }
 
-        guard await wait(for: .milliseconds(700)) else { return }
-        withAnimation(.easeInOut(duration: 0.42)) {
+        withAnimation(.easeInOut(duration: 0.32)) {
             phraseIndex = 0
             phase = .question
         }
 
-        guard await wait(for: .milliseconds(430)) else { return }
-        withAnimation(.easeInOut(duration: 0.38)) {
+        guard await wait(for: .milliseconds(700)) else { return }
+        withAnimation(.easeInOut(duration: 0.22)) {
             phraseIndex = 1
         }
 
-        guard await wait(for: .milliseconds(430)) else { return }
-        withAnimation(.easeInOut(duration: 0.38)) {
+        guard await wait(for: .milliseconds(650)) else { return }
+        withAnimation(.easeInOut(duration: 0.22)) {
             phraseIndex = 2
         }
 
-        guard await wait(for: .milliseconds(440)) else { return }
-        withAnimation(.easeInOut(duration: 0.5)) {
+        guard await wait(for: .milliseconds(650)) else { return }
+        withAnimation(.easeInOut(duration: 0.32)) {
             phase = .brand
         }
 
@@ -183,11 +197,13 @@ private struct BlurScaleOpacityModifier: ViewModifier {
     let blur: CGFloat
     let scale: CGFloat
     let opacity: Double
+    var rotation: Angle = .zero
 
     func body(content: Content) -> some View {
         content
             .opacity(opacity)
             .blur(radius: blur)
             .scaleEffect(scale)
+            .rotationEffect(rotation)
     }
 }

@@ -36,6 +36,15 @@ targets:
           - ar
           - en
           - ku
+        UIApplicationShortcutItems:
+          - UIApplicationShortcutItemType: iq.ottu.ios.quick-action.support
+            UIApplicationShortcutItemTitle: quick_action.support.title
+            UIApplicationShortcutItemSubtitle: quick_action.support.subtitle
+            UIApplicationShortcutItemIconType: UIApplicationShortcutIconTypeMail
+          - UIApplicationShortcutItemType: iq.ottu.ios.quick-action.stay
+            UIApplicationShortcutItemTitle: quick_action.stay.title
+            UIApplicationShortcutItemSubtitle: quick_action.stay.subtitle
+            UIApplicationShortcutItemIconType: UIApplicationShortcutIconTypeLove
         NSLocationWhenInUseUsageDescription: يستخدم وين موقعك لعرض مكانك الحالي وإنشاء اتجاهات تبدأ من موقعك.
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:

@@ -14,6 +14,29 @@
         <string>en</string>
         <string>ku</string>
     </array>
+    <key>UIApplicationShortcutItems</key>
+    <array>
+        <dict>
+            <key>UIApplicationShortcutItemType</key>
+            <string>iq.ottu.ios.quick-action.support</string>
+            <key>UIApplicationShortcutItemTitle</key>
+            <string>quick_action.support.title</string>
+            <key>UIApplicationShortcutItemSubtitle</key>
+            <string>quick_action.support.subtitle</string>
+            <key>UIApplicationShortcutItemIconType</key>
+            <string>UIApplicationShortcutIconTypeMail</string>
+        </dict>
+        <dict>
+            <key>UIApplicationShortcutItemType</key>
+            <string>iq.ottu.ios.quick-action.stay</string>
+            <key>UIApplicationShortcutItemTitle</key>
+            <string>quick_action.stay.title</string>
+            <key>UIApplicationShortcutItemSubtitle</key>
+            <string>quick_action.stay.subtitle</string>
+            <key>UIApplicationShortcutItemIconType</key>
+            <string>UIApplicationShortcutIconTypeLove</string>
+        </dict>
+    </array>
     <key>NSLocationWhenInUseUsageDescription</key>
     <string>يستخدم وين موقعك لعرض مكانك الحالي وإنشاء اتجاهات تبدأ من موقعك.</string>
     <key>UILaunchScreen</key>

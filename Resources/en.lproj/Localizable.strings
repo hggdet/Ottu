@@ -322,3 +322,15 @@
 "map.settings.user_location_icon.car" = "Car";
 "map.settings.user_location_icon.walking" = "Walking";
 "map.settings.user_location_icon.bicycle" = "Bicycle";
+
+/* Home Screen Quick Actions */
+"quick_action.support.title" = "Report or get help";
+"quick_action.support.subtitle" = "We’re here to listen";
+"quick_action.support.subject" = "Wain report or suggestion";
+"quick_action.support.body" = "Hi Wain team,\n\nI have a problem or suggestion:\n\n";
+"quick_action.support.unavailable" = "We couldn’t open a mail app. You can copy the support address and contact us when it suits you.";
+"quick_action.support.copy" = "Copy support email";
+"quick_action.stay.title" = "Why delete me? 😢";
+"quick_action.stay.subtitle" = "Our journey has just begun";
+"quick_action.stay.message" = "Our journey has just begun! If something’s bothering you, tell us so we can try to improve it. We’re happy you’re here, and the choice is always yours.";
+"quick_action.stay.keep" = "Let’s keep exploring";

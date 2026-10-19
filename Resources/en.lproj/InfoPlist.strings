@@ -1,2 +1,7 @@
 "CFBundleDisplayName" = "وين";
 "NSLocationWhenInUseUsageDescription" = "وين uses your location to show your position and calculate directions from where you are.";
+
+"quick_action.support.title" = "Report or get help";
+"quick_action.support.subtitle" = "We’re here to listen";
+"quick_action.stay.title" = "Why delete me? 😢";
+"quick_action.stay.subtitle" = "Our journey has just begun";

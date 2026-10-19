@@ -1,2 +1,7 @@
 "CFBundleDisplayName" = "وين";
 "NSLocationWhenInUseUsageDescription" = "يستخدم وين موقعك لعرض مكانك الحالي وإنشاء اتجاهات تبدأ من موقعك.";
+
+"quick_action.support.title" = "إبلاغ أو مساعدة";
+"quick_action.support.subtitle" = "خلّينا نسمع منك";
+"quick_action.stay.title" = "ليش تحذفني؟ 😢";
+"quick_action.stay.subtitle" = "بعدنا بأول الطريق سوا";
