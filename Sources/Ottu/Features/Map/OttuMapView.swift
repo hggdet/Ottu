@@ -29,6 +29,16 @@ private final class UserLocationSymbolAnnotationView: MLNUserLocationAnnotationV
         symbolView.frame = bounds.insetBy(dx: 11, dy: 11)
         symbolView.isUserInteractionEnabled = false
         addSubview(symbolView)
+        if icon == .moving, !UIAccessibility.isReduceMotionEnabled {
+            let pulse = CABasicAnimation(keyPath: "transform.scale")
+            pulse.fromValue = 0.82
+            pulse.toValue = 1.16
+            pulse.duration = 1.25
+            pulse.autoreverses = true
+            pulse.repeatCount = .infinity
+            pulse.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            symbolView.layer.add(pulse, forKey: "ottu-moving-location-pulse")
+        }
     }
 
     required init?(coder: NSCoder) {
@@ -389,7 +399,7 @@ struct OttuMapView: UIViewRepresentable {
         }
 
         func mapView(_ mapView: MLNMapView, didAdd annotationViews: [MLNAnnotationView]) {
-            guard !UIAccessibility.isReduceMotionEnabled else { return }
+            guard !UIAccessibility.isReduceMotionEnabled, userLocationIcon != .moving else { return }
             for annotationView in annotationViews where annotationView is MLNUserLocationAnnotationView {
                 let pulse = CABasicAnimation(keyPath: "transform.scale")
                 pulse.fromValue = 0.9
