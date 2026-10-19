@@ -57,8 +57,6 @@ struct MapHomeView: View {
     @State private var mapCenter = MapConfiguration.initialCenter
     @State private var selectedTab: MapNavigationTab = .location
     @State private var isMapMoving = false
-    @State private var zoomInRequest = 0
-    @State private var zoomOutRequest = 0
     @State private var searchRetryToken = 0
     @State private var searchErrorMessage: String?
     @AppStorage("ottu.navigationVoiceLanguage") private var navigationVoiceLanguage = "auto"
@@ -113,8 +111,6 @@ struct MapHomeView: View {
                 navigationCoordinate: isNavigationActive ? (locationManager.coordinate ?? routePlan?.coordinates.first) : nil,
                 navigationCourse: isNavigationActive ? locationManager.course : nil,
                 reduceMotion: reduceMotion,
-                zoomInRequest: zoomInRequest,
-                zoomOutRequest: zoomOutRequest,
                 iraqBuildingsManager: iraqBuildingsManager,
                 onSelectAlternativeRoute: selectPreviewRoute,
                 onSelectParkedCar: { activeSheet = .parkedCar },
@@ -163,14 +159,8 @@ struct MapHomeView: View {
                 .transition(.move(edge: .trailing).combined(with: .opacity))
             } else {
                 FloatingMapControls(
-                    glassIntensity: liquidGlassIntensity,
-                    onSaveCar: saveParkedCarLocation,
-                    onZoomIn: { zoomInRequest += 1 },
-                    onZoomOut: { zoomOutRequest += 1 },
-                    onOpenMapSettings: {
-                        searchFocused = false
-                        activeSheet = .mapSettings
-                    }
+                    onLocate: { selectNavigationTab(.location) },
+                    onSaveCar: saveParkedCarLocation
                 )
                 .padding(.trailing, 14)
             }
@@ -253,7 +243,7 @@ struct MapHomeView: View {
                     )
                 }
             }
-                .padding(.horizontal, isNavigationActive ? 14 : 24)
+                .padding(.horizontal, 14)
                 .padding(.top, 8)
                 .padding(.bottom, 6)
         }
@@ -319,6 +309,7 @@ struct MapHomeView: View {
         }) {
             AppSettingsView(
                 selectedLanguage: $selectedLanguage,
+                navigationVoiceLanguage: $navigationVoiceLanguage,
                 locationManager: locationManager,
                 iraqBuildingsManager: iraqBuildingsManager,
                 savedPlaces: localStore.savedPlaces,
@@ -384,32 +375,41 @@ struct MapHomeView: View {
 
     private func searchPanel(maxResultsHeight: CGFloat) -> some View {
         VStack(spacing: 8) {
-            HStack(spacing: 10) {
-                Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                TextField(AppLocalization.string("search.placeholder", locale: locale), text: $query)
-                    .focused($searchFocused)
-                    .textFieldStyle(.plain)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .submitLabel(.search)
-                    .onSubmit { searchFocused = false }
-                    .accessibilityIdentifier("placeSearchField")
-                if isSearching {
-                    ProgressView().controlSize(.small)
-                } else if !query.isEmpty {
-                    Button {
-                        query = ""
-                        results = []
-                        searchErrorMessage = nil
-                    } label: {
-                        Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
+            GlassEffectContainer(spacing: 8) {
+                HStack(spacing: 10) {
+                    MapWeatherButton(
+                        coordinate: locationManager.coordinate ?? mapCenter,
+                        locale: locale,
+                        assistantService: assistantService
+                    )
+                    HStack(spacing: 10) {
+                        Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                        TextField(AppLocalization.string("search.placeholder", locale: locale), text: $query)
+                            .focused($searchFocused)
+                            .textFieldStyle(.plain)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .submitLabel(.search)
+                            .onSubmit { searchFocused = false }
+                            .accessibilityIdentifier("placeSearchField")
+                        if isSearching {
+                            ProgressView().controlSize(.small)
+                        } else if !query.isEmpty {
+                            Button {
+                                query = ""
+                                results = []
+                                searchErrorMessage = nil
+                            } label: {
+                                Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
+                            }
+                            .accessibilityLabel(Text(AppLocalization.string("search.clear", locale: locale)))
+                        }
                     }
-                    .accessibilityLabel(Text(AppLocalization.string("search.clear", locale: locale)))
+                    .padding(.horizontal, 17)
+                    .frame(height: 52)
+                    .glassEffect(.clear.interactive(), in: Capsule())
                 }
             }
-            .padding(.horizontal, 17)
-            .frame(height: 52)
-            .glassEffect(.clear.interactive(), in: Capsule())
             if searchFocused, query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 quickPlacesRow
                     .transition(.opacity)
@@ -1164,12 +1164,6 @@ struct MapHomeView: View {
                 onSelect: addStopAndUpdateRoute,
                 onDismiss: closeQuickStopPicker
             )
-        case .mapSettings:
-            MapSettingsSheet(
-                voiceLanguage: $navigationVoiceLanguage,
-                locale: locale,
-                glassIntensity: liquidGlassIntensity
-            )
         case .parkedCar:
             if let parkedCar = localStore.parkedCarLocation {
                 ParkedCarSheet(
@@ -1703,7 +1697,6 @@ private enum HomeSheet: Identifiable {
     case addPlace(GeoCoordinate)
     case report(GeoCoordinate)
     case quickStops
-    case mapSettings
     case parkedCar
     case categories
     case assistant
@@ -1715,7 +1708,6 @@ private enum HomeSheet: Identifiable {
         case .addPlace(let coordinate): return "add-\(coordinate.latitude)-\(coordinate.longitude)"
         case .report(let coordinate): return "report-\(coordinate.latitude)-\(coordinate.longitude)"
         case .quickStops: return "quick-stops"
-        case .mapSettings: return "map-settings"
         case .parkedCar: return "parked-car"
         case .categories: return "categories"
         case .assistant: return "assistant"

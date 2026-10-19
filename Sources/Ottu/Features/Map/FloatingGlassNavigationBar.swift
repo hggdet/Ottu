@@ -33,28 +33,22 @@ struct FloatingGlassNavigationBar: View {
     var onSelect: (MapNavigationTab) -> Void
 
     @Environment(\.locale) private var locale
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Namespace private var selectionNamespace
-
-    private var selectionAnimation: Animation {
-        .spring(response: 0.34, dampingFraction: 0.86)
-    }
 
     var body: some View {
-        // Case order is semantic. SwiftUI mirrors it for RTL, placing location
-        // at the right, then assistant, categories and settings to its left.
-        HStack(spacing: 0) {
-            ForEach(MapNavigationTab.allCases) { tab in
-                tabButton(for: tab)
+        GlassEffectContainer(spacing: 8) {
+            HStack(alignment: .bottom) {
+                tabButton(for: .assistant)
+                Spacer(minLength: 16)
+                VStack(spacing: 14) {
+                    tabButton(for: .categories)
+                    tabButton(for: .settings)
+                }
             }
         }
-        .padding(5)
-        // Clear is Apple's native glass variant for a rich background (the map).
-        // No white overlay, custom border, blur, clipping or opacity is applied.
-        .glassEffect(.clear.interactive(), in: Capsule())
+        // Keep the controls on the same physical side in every interface language.
+        .environment(\.layoutDirection, .leftToRight)
         .accessibilityIdentifier("mapNavigationBar")
         .accessibilityElement(children: .contain)
-        .animation(reduceMotion ? nil : selectionAnimation, value: selection)
     }
 
     private func tabButton(for tab: MapNavigationTab) -> some View {
@@ -65,32 +59,17 @@ struct FloatingGlassNavigationBar: View {
             selection = tab
             onSelect(tab)
         } label: {
-            VStack(spacing: 4) {
-                Image(tab.icon)
-                    .renderingMode(.template)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 24, height: 24)
-
-                Text(title)
-                    .font(.system(size: 11, weight: isSelected ? .semibold : .medium))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-            }
-            .foregroundStyle(isSelected ? Color.blue : Color.primary)
-            .frame(maxWidth: .infinity)
-            .frame(height: 58)
-            .contentShape(Capsule())
-            .background {
-                if isSelected {
-                    Capsule()
-                        .fill(Color.blue.opacity(0.12))
-                        .matchedGeometryEffect(id: "selected-tab", in: selectionNamespace)
-                }
-            }
+            Image(tab.icon)
+                .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 24, height: 24)
+                .foregroundStyle(isSelected ? Color.blue : Color.primary)
+                .frame(width: 46, height: 46)
+                .contentShape(Circle())
         }
         .buttonStyle(.plain)
-        .frame(maxWidth: .infinity)
+        .glassEffect(.clear.interactive(), in: Circle())
         .accessibilityIdentifier("mapTab.\(tab.rawValue)")
         .accessibilityLabel(Text(title))
         .accessibilityAddTraits(isSelected ? .isSelected : [])

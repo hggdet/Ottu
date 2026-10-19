@@ -4,6 +4,7 @@ import UIKit
 struct AppSettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Binding var selectedLanguage: String
+    @Binding var navigationVoiceLanguage: String
     @ObservedObject var locationManager: UserLocationManager
     @ObservedObject var iraqBuildingsManager: IraqBuildingFootprintsManager
     @AppStorage("ottu.distanceUnit") private var distanceUnit = "km"
@@ -54,6 +55,15 @@ struct AppSettingsView: View {
                     Label(AppLocalization.string("settings.appearance.system", locale: interfaceLocale), systemImage: "iphone").tag("system")
                     Label(AppLocalization.string("settings.appearance.light", locale: interfaceLocale), systemImage: "sun.max").tag("light")
                     Label(AppLocalization.string("settings.appearance.dark", locale: interfaceLocale), systemImage: "moon").tag("dark")
+                }
+
+                NavigationLink {
+                    MapSettingsView(
+                        voiceLanguage: $navigationVoiceLanguage,
+                        locale: interfaceLocale
+                    )
+                } label: {
+                    AppLocalizedLabel("map.settings.title", systemImage: "map", locale: interfaceLocale)
                 }
 
                 Section {

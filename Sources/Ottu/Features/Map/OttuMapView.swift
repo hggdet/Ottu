@@ -7,7 +7,42 @@ import UIKit
 private final class RouteAlternativeAnnotation: MLNPointAnnotation {}
 private final class ParkedCarAnnotation: MLNPointAnnotation {}
 
+private final class UserLocationSymbolAnnotationView: MLNUserLocationAnnotationView {
+    private let symbolView = UIImageView()
+
+    init(icon: UserLocationIcon) {
+        super.init(annotation: nil, reuseIdentifier: "ottu-user-location-symbol")
+        frame = CGRect(x: 0, y: 0, width: 44, height: 44)
+        backgroundColor = .systemBlue
+        layer.cornerRadius = 22
+        layer.borderColor = UIColor.white.withAlphaComponent(0.98).cgColor
+        layer.borderWidth = 3
+        layer.shadowColor = UIColor.black.cgColor
+        layer.shadowOpacity = 0.24
+        layer.shadowRadius = 6
+        layer.shadowOffset = CGSize(width: 0, height: 3)
+        isAccessibilityElement = true
+        accessibilityLabel = NSLocalizedString(icon.localizationKey, comment: "")
+        symbolView.image = UIImage(systemName: icon.symbolName, withConfiguration: UIImage.SymbolConfiguration(pointSize: 18, weight: .semibold))
+        symbolView.tintColor = .white
+        symbolView.contentMode = .scaleAspectFit
+        symbolView.frame = bounds.insetBy(dx: 11, dy: 11)
+        symbolView.isUserInteractionEnabled = false
+        addSubview(symbolView)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    func setScreenHeading(_ heading: CLLocationDirection?) {
+        let angle = heading.map { CGFloat($0 * .pi / 180) } ?? 0
+        symbolView.transform = CGAffineTransform(rotationAngle: angle)
+    }
+}
+
 struct OttuMapView: UIViewRepresentable {
+    @AppStorage(UserLocationIcon.storageKey) private var userLocationIconRawValue = UserLocationIcon.arrow.rawValue
     let selectedPlace: Place?
     let parkedCarLocation: ParkedCarLocation?
     let parkedCarTitle: String
@@ -20,8 +55,6 @@ struct OttuMapView: UIViewRepresentable {
     let navigationCoordinate: GeoCoordinate?
     let navigationCourse: Double?
     let reduceMotion: Bool
-    let zoomInRequest: Int
-    let zoomOutRequest: Int
     @ObservedObject var iraqBuildingsManager: IraqBuildingFootprintsManager
     let onSelectAlternativeRoute: (UUID) -> Void
     let onSelectParkedCar: () -> Void
@@ -87,16 +120,8 @@ struct OttuMapView: UIViewRepresentable {
             on: mapView,
             animated: !reduceMotion
         )
-        if context.coordinator.lastZoomInRequest != zoomInRequest {
-            context.coordinator.lastZoomInRequest = zoomInRequest
-            let targetZoom = min(mapView.maximumZoomLevel, mapView.zoomLevel + 1)
-            mapView.setZoomLevel(targetZoom, animated: !reduceMotion)
-        }
-        if context.coordinator.lastZoomOutRequest != zoomOutRequest {
-            context.coordinator.lastZoomOutRequest = zoomOutRequest
-            let targetZoom = max(mapView.minimumZoomLevel, mapView.zoomLevel - 1)
-            mapView.setZoomLevel(targetZoom, animated: !reduceMotion)
-        }
+        let userLocationIcon = UserLocationIcon(rawValue: userLocationIconRawValue) ?? .arrow
+        context.coordinator.updateUserLocationIcon(userLocationIcon, on: mapView)
         if context.coordinator.lastSelectedPlaceID != selectedPlace?.id {
             context.coordinator.lastSelectedPlaceID = selectedPlace?.id
             context.coordinator.updateSelectedPlaceAnnotation(selectedPlace, on: mapView)
@@ -130,8 +155,6 @@ struct OttuMapView: UIViewRepresentable {
         var lastSelectedPlaceID: String?
         var currentStyleURL: URL?
         var appliedRouteSignature: String?
-        var lastZoomInRequest = 0
-        var lastZoomOutRequest = 0
         var latestRoute: RoutePlan?
         var latestAlternativeRoutes: [RoutePlan] = []
         var latestAlternativeLabels: [UUID: String] = [:]
@@ -139,6 +162,9 @@ struct OttuMapView: UIViewRepresentable {
         private(set) var isNavigating = false
         private var navigationCoordinate: GeoCoordinate?
         private var navigationCourse: Double?
+        private var userLocationIcon: UserLocationIcon = .arrow
+        private var latestUserLocationCourse: CLLocationDirection?
+        private weak var userLocationSymbolView: UserLocationSymbolAnnotationView?
         private var routeLayerIdentifiers: [String] = []
         private var routeSourceIdentifiers: [String] = []
         private var routeAlternativeAnnotations: [RouteAlternativeAnnotation] = []
@@ -220,7 +246,13 @@ struct OttuMapView: UIViewRepresentable {
         }
 
         func mapView(_ mapView: MLNMapView, viewFor annotation: MLNAnnotation) -> MLNAnnotationView? {
-            guard !(annotation is MLNUserLocation) else { return nil }
+            if annotation is MLNUserLocation {
+                guard userLocationIcon != .arrow else { return nil }
+                let marker = UserLocationSymbolAnnotationView(icon: userLocationIcon)
+                userLocationSymbolView = marker
+                updateUserLocationSymbolHeading(on: mapView)
+                return marker
+            }
 
             if annotation is ParkedCarAnnotation {
                 let marker = MLNAnnotationView(reuseIdentifier: "ottu-parked-car-marker")
@@ -321,8 +353,39 @@ struct OttuMapView: UIViewRepresentable {
             userLocationStyle
         }
 
+        func updateUserLocationIcon(_ icon: UserLocationIcon, on mapView: MLNMapView) {
+            guard icon != userLocationIcon else {
+                updateUserLocationSymbolHeading(on: mapView)
+                return
+            }
+            userLocationIcon = icon
+            userLocationSymbolView = nil
+            if mapView.showsUserLocation {
+                mapView.showsUserLocation = false
+                mapView.showsUserLocation = true
+            }
+            updateUserLocationSymbolHeading(on: mapView)
+        }
+
+        private func updateUserLocationSymbolHeading(on mapView: MLNMapView) {
+            guard userLocationIcon != .arrow else { return }
+            let navigationHeading = isNavigating ? validCourse(navigationCourse) : nil
+            let course = navigationHeading ?? validCourse(latestUserLocationCourse)
+            let screenHeading = course.map {
+                ($0 - mapView.camera.heading + 360).truncatingRemainder(dividingBy: 360)
+            }
+            userLocationSymbolView?.setScreenHeading(screenHeading)
+        }
+
+        private func validCourse(_ course: CLLocationDirection?) -> CLLocationDirection? {
+            guard let course, course >= 0, course <= 360 else { return nil }
+            return course
+        }
+
         func mapView(_ mapView: MLNMapView, didUpdate userLocation: MLNUserLocation?) {
             updateParkedCarMarkerOffset(userLocationCoordinate: userLocation?.coordinate)
+            latestUserLocationCourse = userLocation?.location?.course
+            updateUserLocationSymbolHeading(on: mapView)
         }
 
         func mapView(_ mapView: MLNMapView, didAdd annotationViews: [MLNAnnotationView]) {

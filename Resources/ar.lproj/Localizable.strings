@@ -316,3 +316,8 @@
 "network.offline.general" = "لا يوجد اتصال بالإنترنت. قد تعمل الخريطة من البيانات المنزّلة؛ البحث وإنشاء مسارات جديدة يحتاجان إلى الاتصال.";
 "network.offline.active_route" = "انقطع الاتصال. تابع المسار المحفوظ مؤقتًا؛ ظهور الخريطة يعتمد على البيانات المنزّلة. البحث والمسارات الجديدة تحتاج إلى الإنترنت.";
 "navigation.location" = "الموقع";
+"map.settings.user_location_icon" = "رمز موقعك";
+"map.settings.user_location_icon.arrow" = "السهم (افتراضي)";
+"map.settings.user_location_icon.car" = "سيارة";
+"map.settings.user_location_icon.walking" = "المشي";
+"map.settings.user_location_icon.bicycle" = "دراجة";

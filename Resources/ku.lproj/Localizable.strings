@@ -316,3 +316,8 @@
 "network.offline.general" = "پەیوەندیی ئینتەرنێت نییە. لەوانەیە نەخشەکە داتای داگیراو بەکاربهێنێت؛ گەڕان و ڕێگای نوێ پێویستیان بە پەیوەندییە.";
 "network.offline.active_route" = "پەیوەندی پچڕا. بە ڕێگای پاشەکەوتکراوی کاتییەوە بەردەوام بە؛ دەرکەوتنی نەخشە بە داتای داگیراوەوە پەیوەستە. گەڕان و ڕێگای نوێ ئینتەرنێت دەوێت.";
 "navigation.location" = "شوێن";
+"map.settings.user_location_icon" = "هێمای شوێنی تۆ";
+"map.settings.user_location_icon.arrow" = "تیر (بنەڕەت)";
+"map.settings.user_location_icon.car" = "ئۆتۆمبێل";
+"map.settings.user_location_icon.walking" = "پیادەڕەوی";
+"map.settings.user_location_icon.bicycle" = "پاسکیل";

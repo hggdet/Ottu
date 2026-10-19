@@ -316,3 +316,8 @@
 "network.offline.general" = "No internet connection. The map may use downloaded data; search and new routes need a connection.";
 "network.offline.active_route" = "Connection lost. Continue on the temporarily saved route; map display depends on downloaded data. Search and new routes need internet.";
 "navigation.location" = "Location";
+"map.settings.user_location_icon" = "Your location icon";
+"map.settings.user_location_icon.arrow" = "Arrow (default)";
+"map.settings.user_location_icon.car" = "Car";
+"map.settings.user_location_icon.walking" = "Walking";
+"map.settings.user_location_icon.bicycle" = "Bicycle";
