@@ -10,7 +10,7 @@ enum MapNavigationTab: String, CaseIterable, Identifiable {
 
     var titleKey: String {
         switch self {
-        case .location: "location.my_location"
+        case .location: "navigation.location"
         case .assistant: "navigation.assistant"
         case .categories: "navigation.categories"
         case .settings: "navigation.settings"
@@ -32,108 +32,67 @@ struct FloatingGlassNavigationBar: View {
     var glassIntensity: Double = 1
     var onSelect: (MapNavigationTab) -> Void
 
-    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.locale) private var locale
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Namespace private var selectionNamespace
 
     private var selectionAnimation: Animation {
-        .spring(response: 0.34, dampingFraction: 0.86, blendDuration: 0.06)
-    }
-
-    private var normalizedGlassIntensity: Double {
-        min(max(glassIntensity, 0), 1)
-    }
-
-    private var selectedIconColor: Color {
-        .green
-    }
-
-    private var selectedTextColor: Color {
-        .primary
-    }
-
-    private var unselectedColor: Color {
-        .gray
+        .spring(response: 0.34, dampingFraction: 0.86)
     }
 
     var body: some View {
-        adaptiveNavigationBar
-            .accessibilityElement(children: .contain)
-            .animation(reduceMotion ? nil : selectionAnimation, value: selection)
-            .transaction { transaction in
-                if reduceMotion {
-                    transaction.animation = nil
-                }
-            }
-    }
-
-    private var adaptiveNavigationBar: some View {
-        navigationBar
-    }
-
-    private var navigationBar: some View {
+        // Case order is semantic. SwiftUI mirrors it for RTL, placing location
+        // at the right, then assistant, categories and settings to its left.
         HStack(spacing: 0) {
             ForEach(MapNavigationTab.allCases) { tab in
                 tabButton(for: tab)
             }
         }
-        .padding(4)
-        .mapGlassSurface(cornerRadius: 24, glassIntensity: normalizedGlassIntensity)
+        .padding(5)
+        // Clear is Apple's native glass variant for a rich background (the map).
+        // No white overlay, custom border, blur, clipping or opacity is applied.
+        .glassEffect(.clear.interactive(), in: Capsule())
+        .accessibilityIdentifier("mapNavigationBar")
+        .accessibilityElement(children: .contain)
+        .animation(reduceMotion ? nil : selectionAnimation, value: selection)
     }
 
     private func tabButton(for tab: MapNavigationTab) -> some View {
         let isSelected = selection == tab
-        let foreground = isSelected ? selectedTextColor : unselectedColor
         let title = AppLocalization.string(tab.titleKey, locale: locale)
 
         return Button {
-            if reduceMotion {
-                selection = tab
-            } else {
-                withAnimation(selectionAnimation) {
-                    selection = tab
-                }
-            }
+            selection = tab
             onSelect(tab)
         } label: {
             VStack(spacing: 4) {
-                tabIcon(for: tab)
-                    .frame(width: 22, height: 22)
+                Image(tab.icon)
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 24, height: 24)
 
                 Text(title)
-                    .font(.system(size: 10.5, weight: isSelected ? .semibold : .regular))
-                    .foregroundStyle(foreground)
+                    .font(.system(size: 11, weight: isSelected ? .semibold : .medium))
                     .lineLimit(1)
-                    .minimumScaleFactor(0.72)
-                    .frame(maxWidth: .infinity)
+                    .minimumScaleFactor(0.75)
             }
+            .foregroundStyle(isSelected ? Color.blue : Color.primary)
             .frame(maxWidth: .infinity)
-            .frame(height: 60)
+            .frame(height: 58)
             .contentShape(Capsule())
             .background {
                 if isSelected {
                     Capsule()
-                        .fill(selectionHighlightColor)
-                        .matchedGeometryEffect(id: "selected-tab-indicator", in: selectionNamespace)
+                        .fill(Color.blue.opacity(0.12))
+                        .matchedGeometryEffect(id: "selected-tab", in: selectionNamespace)
                 }
             }
         }
         .buttonStyle(.plain)
         .frame(maxWidth: .infinity)
+        .accessibilityIdentifier("mapTab.\(tab.rawValue)")
         .accessibilityLabel(Text(title))
         .accessibilityAddTraits(isSelected ? .isSelected : [])
-    }
-
-    private func tabIcon(for tab: MapNavigationTab) -> some View {
-        Image(tab.icon)
-            .renderingMode(.template)
-            .resizable()
-            .scaledToFit()
-            .foregroundStyle(selection == tab ? selectedIconColor : unselectedColor)
-    }
-
-    private var selectionHighlightColor: Color {
-        colorScheme == .dark ? .green.opacity(0.16) : .green.opacity(0.1)
     }
 }

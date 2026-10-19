@@ -1,0 +1,217 @@
+name: iOS 26 Arabic Glass Review
+
+on:
+  push:
+    branches:
+      - cue-fix/behavior-review-2026-10-18
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ios26-glass-review:
+    # Xcode 26 + iOS 26 runtime are selected and verified explicitly below.
+    runs-on: macos-26
+    timeout-minutes: 60
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Select and verify Xcode 26
+        shell: bash
+        run: |
+          set -euo pipefail
+          candidates=()
+          for path in /Applications/Xcode_26*.app /Applications/Xcode.app; do
+            [[ -d "$path" ]] || continue
+            version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$path/Contents/Info.plist" 2>/dev/null || true)
+            [[ "$version" == 26.* ]] && candidates+=("$path")
+          done
+          if [[ ${#candidates[@]} -eq 0 ]]; then
+            echo 'No Xcode 26 installation was found on this runner.' >&2
+            ls -1 /Applications/Xcode*.app 2>/dev/null || true
+            exit 1
+          fi
+          last_index=$((${#candidates[@]} - 1))
+          XCODE_PATH="${candidates[$last_index]}"
+          echo "Using $XCODE_PATH"
+          sudo xcode-select --switch "$XCODE_PATH/Contents/Developer"
+          xcodebuild -version | tee xcode-version.txt
+          xcodebuild -version | grep -Eq '^Xcode 26\.'
+          xcrun simctl list runtimes | tee ios-runtimes.txt
+          grep -q 'iOS 26\.' ios-runtimes.txt
+
+      - name: Install XcodeGen and generate project
+        run: |
+          brew install xcodegen
+          xcodegen generate --spec project.yml
+
+      - name: Select an available iOS 26 iPhone simulator
+        id: simulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, subprocess, sys
+          data = json.loads(subprocess.check_output(
+              ["xcrun", "simctl", "list", "devices", "available", "-j"], text=True))
+          choices = []
+          for runtime, devices in data["devices"].items():
+              if "iOS-26" not in runtime:
+                  continue
+              for device in devices:
+                  if device["name"].startswith("iPhone"):
+                      choices.append((runtime, device["name"], device["udid"]))
+          if not choices:
+              raise SystemExit("No available iPhone simulator using an iOS 26 runtime.")
+          runtime, name, udid = sorted(choices, key=lambda row: (row[0], row[1]))[-1]
+          print(f"udid={udid}")
+          print(f"name={name}")
+          print(f"runtime={runtime}")
+          print(f"Selected {name} ({udid}) on {runtime}", file=sys.stderr)
+          PY
+          mkdir -p artifacts/ios26-review/logs
+
+      - name: Boot simulator and set deterministic Arabic Baghdad state
+        env:
+          SIMULATOR_UDID: ${{ steps.simulator.outputs.udid }}
+          SIMULATOR_NAME: ${{ steps.simulator.outputs.name }}
+          SIMULATOR_RUNTIME: ${{ steps.simulator.outputs.runtime }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'Simulator: %s (%s), runtime %s\n' \
+            "$SIMULATOR_NAME" "$SIMULATOR_UDID" "$SIMULATOR_RUNTIME" \
+            | tee artifacts/ios26-review/logs/simulator.txt
+          xcrun simctl boot "$SIMULATOR_UDID" || true
+          xcrun simctl bootstatus "$SIMULATOR_UDID" -b
+          xcrun simctl status_bar "$SIMULATOR_UDID" override \
+            --time '9:41' --dataNetwork wifi --wifiMode active --wifiBars 3 \
+            --cellularMode active --cellularBars 4 --batteryState charged --batteryLevel 100
+          xcrun simctl location "$SIMULATOR_UDID" set 33.3152,44.3661
+          xcrun simctl privacy "$SIMULATOR_UDID" grant location iq.ottu.ios || true
+
+      - name: Resolve Swift packages
+        run: |
+          set -o pipefail
+          xcodebuild -resolvePackageDependencies -project Ottu.xcodeproj -scheme Ottu \
+            2>&1 | tee artifacts/ios26-review/logs/resolve-packages.log
+
+      - name: Build app for iOS 26 simulator (no device archive or IPA)
+        env:
+          SIMULATOR_UDID: ${{ steps.simulator.outputs.udid }}
+        run: |
+          set -o pipefail
+          xcodebuild build -project Ottu.xcodeproj -scheme Ottu \
+            -destination "id=$SIMULATOR_UDID" -derivedDataPath build/ios26-derived \
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tee artifacts/ios26-review/logs/build.log
+
+      - name: Run existing unit tests on iOS 26
+        env:
+          SIMULATOR_UDID: ${{ steps.simulator.outputs.udid }}
+        run: |
+          set -o pipefail
+          xcodebuild test -project Ottu.xcodeproj -scheme Ottu \
+            -destination "id=$SIMULATOR_UDID" -derivedDataPath build/ios26-derived \
+            -parallel-testing-enabled NO \
+            -resultBundlePath artifacts/ios26-review/unit-tests.xcresult \
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tee artifacts/ios26-review/logs/unit-tests.log
+
+      - name: Check live map style endpoint
+        id: map_preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          style_url='https://tiles.openfreemap.org/styles/liberty'
+          if curl --fail --location --silent --show-error --retry 3 --retry-delay 5 \
+              --connect-timeout 15 --max-time 45 "$style_url" \
+              -o artifacts/ios26-review/logs/openfreemap-style.json; then
+            echo 'status=available' >> "$GITHUB_OUTPUT"
+            echo 'OpenFreeMap style endpoint responded successfully.' | tee artifacts/ios26-review/logs/map-preflight.txt
+          else
+            echo 'status=unavailable' >> "$GITHUB_OUTPUT"
+            echo 'OpenFreeMap style endpoint could not be reached; screenshot will still be captured from the simulator, but the map may be blank.' \
+              | tee artifacts/ios26-review/logs/map-preflight.txt
+          fi
+
+      - name: Install and launch Arabic home screen
+        env:
+          SIMULATOR_UDID: ${{ steps.simulator.outputs.udid }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP_PATH='build/ios26-derived/Build/Products/Debug-iphonesimulator/Ottu.app'
+          test -d "$APP_PATH"
+          xcrun simctl install "$SIMULATOR_UDID" "$APP_PATH"
+          # These are the app's existing @AppStorage keys. Mark first run complete
+          # to bypass WelcomeMotionView and FirstRunSetupView without app changes.
+          # Try simulator defaults first; argv overrides below also guarantee
+          # the values when Simulator defaults writes are sandbox-restricted.
+          xcrun simctl spawn "$SIMULATOR_UDID" defaults write iq.ottu.ios ottu.initialSetupCompleted -bool YES || true
+          xcrun simctl spawn "$SIMULATOR_UDID" defaults write iq.ottu.ios ottu.welcomeMotionCompleted -bool YES || true
+          xcrun simctl spawn "$SIMULATOR_UDID" defaults write iq.ottu.ios ottu.language -string ar || true
+          xcrun simctl spawn "$SIMULATOR_UDID" defaults write iq.ottu.ios ottu.appearance -string light || true
+          xcrun simctl spawn "$SIMULATOR_UDID" defaults write iq.ottu.ios ottu.mapDisplayMode -string 2d || true
+          xcrun simctl spawn "$SIMULATOR_UDID" defaults write iq.ottu.ios ottu.liquidGlassIntensity -float 1.0 || true
+          xcrun simctl launch "$SIMULATOR_UDID" iq.ottu.ios \
+            -ottu.initialSetupCompleted YES \
+            -ottu.welcomeMotionCompleted YES \
+            -ottu.language ar -ottu.appearance light \
+            -ottu.mapDisplayMode 2d -ottu.liquidGlassIntensity 1.0 \
+            2>&1 | tee artifacts/ios26-review/logs/launch.log
+
+      - name: Wait for real map rendering and capture simulator screenshot
+        env:
+          SIMULATOR_UDID: ${{ steps.simulator.outputs.udid }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          wait_for_map() {
+            for seconds in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24; do
+              sleep 5
+              if (( seconds % 6 == 0 )); then
+                echo "Map load wait: $((seconds * 5))s"
+              fi
+            done
+          }
+          # Capture the actual simulator display; never substitute or synthesize map imagery.
+          wait_for_map
+          xcrun simctl io "$SIMULATOR_UDID" screenshot \
+            artifacts/ios26-review/ottu-ios26-arabic-home.png
+          test -s artifacts/ios26-review/ottu-ios26-arabic-home.png
+          sips -g pixelWidth -g pixelHeight artifacts/ios26-review/ottu-ios26-arabic-home.png \
+            | tee artifacts/ios26-review/logs/screenshot-light-dimensions.txt
+          xcrun simctl terminate "$SIMULATOR_UDID" iq.ottu.ios || true
+          xcrun simctl ui "$SIMULATOR_UDID" appearance dark
+          xcrun simctl launch "$SIMULATOR_UDID" iq.ottu.ios \
+            -ottu.initialSetupCompleted YES \
+            -ottu.welcomeMotionCompleted YES \
+            -ottu.language ar -ottu.appearance dark \
+            -ottu.mapDisplayMode 2d -ottu.liquidGlassIntensity 1.0 \
+            2>&1 | tee artifacts/ios26-review/logs/launch-dark.log
+          wait_for_map
+          xcrun simctl io "$SIMULATOR_UDID" screenshot \
+            artifacts/ios26-review/ottu-ios26-arabic-home-dark.png
+          test -s artifacts/ios26-review/ottu-ios26-arabic-home-dark.png
+          sips -g pixelWidth -g pixelHeight artifacts/ios26-review/ottu-ios26-arabic-home-dark.png \
+            | tee artifacts/ios26-review/logs/screenshot-dark-dimensions.txt
+          xcrun simctl spawn "$SIMULATOR_UDID" log show --last 10m --style compact \
+            --predicate 'process == "Ottu" OR process == "MapLibre"' \
+            > artifacts/ios26-review/logs/simulator-app.log 2>&1 || true
+
+      - name: Fail review if live map service was unreachable
+        if: steps.map_preflight.outputs.status != 'available'
+        run: |
+          echo 'Review is not considered successful: the live OpenFreeMap style endpoint was unavailable. The attached PNG, if present, is a raw simulator capture and must not be treated as proof that map tiles rendered.' >&2
+          exit 1
+
+      - name: Upload screenshot, xcresult, and diagnostic logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ottu-ios26-glass-review
+          path: artifacts/ios26-review/
+          if-no-files-found: warn
+          retention-days: 14

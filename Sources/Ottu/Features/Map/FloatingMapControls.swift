@@ -5,44 +5,36 @@ struct FloatingMapControls: View {
     @Environment(\.locale) private var locale
 
     let glassIntensity: Double
-    let onLocate: () -> Void
     let onSaveCar: () -> Void
     let onZoomIn: () -> Void
     let onZoomOut: () -> Void
     let onOpenMapSettings: () -> Void
 
     var body: some View {
-        VStack(spacing: 10) {
-            controlButton(
-                systemName: "location.fill",
-                accessibilityKey: "location.my_location",
-                tint: .green,
-                action: onLocate
-            )
+        GlassEffectContainer(spacing: 8) {
+            VStack(spacing: 14) {
+                // Location already has a dedicated bottom tab; do not repeat it.
+                controlButton(
+                    systemName: "car.fill",
+                    accessibilityKey: "parked_car.save",
+                    action: onSaveCar
+                )
 
-            controlButton(
-                systemName: "car.fill",
-                accessibilityKey: "parked_car.save",
-                tint: .orange,
-                action: onSaveCar
-            )
+                zoomControlPill
 
-            zoomControlPill
-
-            controlButton(
-                systemName: "square.3.layers.3d",
-                accessibilityKey: "map.settings.open",
-                action: onOpenMapSettings
-            )
+                controlButton(
+                    systemName: "slider.horizontal.3",
+                    accessibilityKey: "map.settings.open",
+                    action: onOpenMapSettings
+                )
+            }
         }
-        .padding(5)
         .accessibilityElement(children: .contain)
     }
 
     private func controlButton(
         systemName: String,
         accessibilityKey: String,
-        tint: Color = .primary,
         action: @escaping () -> Void
     ) -> some View {
         Button {
@@ -50,36 +42,23 @@ struct FloatingMapControls: View {
             action()
         } label: {
             Image(systemName: systemName)
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(tint)
-                .frame(width: 42, height: 42)
+                .font(.system(size: 17, weight: .medium))
+                .foregroundStyle(Color.primary)
+                .frame(width: 46, height: 46)
                 .contentShape(Circle())
-                .mapGlassCircleSurface(glassIntensity: glassIntensity)
         }
         .buttonStyle(.plain)
+        .glassEffect(.clear.interactive(), in: Circle())
         .accessibilityLabel(Text(AppLocalization.string(accessibilityKey, locale: locale)))
     }
 
     private var zoomControlPill: some View {
         VStack(spacing: 0) {
-            zoomButton(
-                systemName: "plus",
-                accessibilityKey: "map.zoom_in",
-                action: onZoomIn
-            )
-
-            Rectangle()
-                .fill(Color.white.opacity(0.42))
-                .frame(width: 24, height: 1)
-                .allowsHitTesting(false)
-
-            zoomButton(
-                systemName: "minus",
-                accessibilityKey: "map.zoom_out",
-                action: onZoomOut
-            )
+            zoomButton(systemName: "plus", accessibilityKey: "map.zoom_in", action: onZoomIn)
+            Divider().frame(width: 22).allowsHitTesting(false)
+            zoomButton(systemName: "minus", accessibilityKey: "map.zoom_out", action: onZoomOut)
         }
-        .mapGlassSurface(cornerRadius: 22, glassIntensity: glassIntensity)
+        .glassEffect(.clear.interactive(), in: Capsule())
         .accessibilityElement(children: .contain)
     }
 
@@ -93,9 +72,9 @@ struct FloatingMapControls: View {
             action()
         } label: {
             Image(systemName: systemName)
-                .font(.system(size: 15, weight: .semibold))
+                .font(.system(size: 17, weight: .medium))
                 .foregroundStyle(Color.primary)
-                .frame(width: 42, height: 39)
+                .frame(width: 46, height: 44)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

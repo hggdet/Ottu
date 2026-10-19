@@ -315,3 +315,4 @@
 "network.offline.pill.route" = "Offline · continue on the temporarily saved route; map needs downloaded data.";
 "network.offline.general" = "No internet connection. The map may use downloaded data; search and new routes need a connection.";
 "network.offline.active_route" = "Connection lost. Continue on the temporarily saved route; map display depends on downloaded data. Search and new routes need internet.";
+"navigation.location" = "Location";

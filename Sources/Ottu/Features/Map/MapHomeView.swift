@@ -61,9 +61,8 @@ struct MapHomeView: View {
     @State private var zoomOutRequest = 0
     @State private var searchRetryToken = 0
     @State private var searchErrorMessage: String?
-    @AppStorage("ottu.mapDisplayMode") private var mapDisplayMode = "2d"
     @AppStorage("ottu.navigationVoiceLanguage") private var navigationVoiceLanguage = "auto"
-    @AppStorage("ottu.liquidGlassIntensity") private var liquidGlassIntensity = 1.0
+    private let liquidGlassIntensity = 1.0
     @AppStorage("ottu.distanceUnit") private var distanceUnit = "km"
     @AppStorage("ottu.routing.transportMode") private var transportModeRawValue = RouteTransportMode.driving.rawValue
     @State private var isSearching = false
@@ -109,7 +108,7 @@ struct MapHomeView: View {
                 alternativeRoutes: isNavigationActive || focusedPlace == nil ? [] : previewAlternativeRoutes,
                 alternativeRouteLabels: isNavigationActive || focusedPlace == nil ? [:] : previewAlternativeLabels,
                 styleURL: MapConfiguration.styleURL(isDark: colorScheme == .dark),
-                is3D: mapDisplayMode == "3d",
+                is3D: false,
                 isNavigationActive: isNavigationActive,
                 navigationCoordinate: isNavigationActive ? (locationManager.coordinate ?? routePlan?.coordinates.first) : nil,
                 navigationCourse: isNavigationActive ? locationManager.course : nil,
@@ -165,7 +164,6 @@ struct MapHomeView: View {
             } else {
                 FloatingMapControls(
                     glassIntensity: liquidGlassIntensity,
-                    onLocate: centerOnMyLocation,
                     onSaveCar: saveParkedCarLocation,
                     onZoomIn: { zoomInRequest += 1 },
                     onZoomOut: { zoomOutRequest += 1 },
@@ -306,7 +304,7 @@ struct MapHomeView: View {
             clearNearbySearch()
         }
         .sheet(item: $activeSheet, onDismiss: {
-            if selectedTab == .assistant { selectedTab = .location }
+            if selectedTab == .assistant || selectedTab == .categories { selectedTab = .location }
         }) { sheet in
             sheetContent(for: sheet)
                 .presentationDetents([.medium, .large])
@@ -410,13 +408,13 @@ struct MapHomeView: View {
                 }
             }
             .padding(.horizontal, 17)
-            .frame(height: 46)
-            .mapGlassSurface(cornerRadius: 24, glassIntensity: liquidGlassIntensity)
+            .frame(height: 52)
+            .glassEffect(.clear.interactive(), in: Capsule())
             if searchFocused, query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 quickPlacesRow
                     .transition(.opacity)
             }
-            if !isMapMoving, !isRouting {
+            if searchFocused, !isMapMoving, !isRouting {
                 quickCategoryChips
                     .transition(.opacity)
             }
@@ -1168,7 +1166,6 @@ struct MapHomeView: View {
             )
         case .mapSettings:
             MapSettingsSheet(
-                mapDisplayMode: $mapDisplayMode,
                 voiceLanguage: $navigationVoiceLanguage,
                 locale: locale,
                 glassIntensity: liquidGlassIntensity

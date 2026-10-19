@@ -8,7 +8,6 @@ struct AppSettingsView: View {
     @ObservedObject var iraqBuildingsManager: IraqBuildingFootprintsManager
     @AppStorage("ottu.distanceUnit") private var distanceUnit = "km"
     @AppStorage("ottu.appearance") private var selectedAppearance = "system"
-    @AppStorage("ottu.liquidGlassIntensity") private var liquidGlassIntensity = 1.0
     @State private var isWaitingForLocation = false
     @State private var requestedLocationUpdateID = 0
     @State private var locationRequestTimeout: Task<Void, Never>?
@@ -86,14 +85,6 @@ struct AppSettingsView: View {
                     .buttonStyle(.plain)
                     .disabled(isWaitingForLocation)
                     .accessibilityHint(Text(AppLocalization.string("settings.share_location_hint", locale: interfaceLocale)))
-                }
-
-                Section {
-                    Slider(value: $liquidGlassIntensity, in: 0...1, step: 0.01)
-                        .accessibilityLabel(Text(AppLocalization.string("settings.liquid_glass", locale: interfaceLocale)))
-                        .accessibilityValue(Text("\(Int((liquidGlassIntensity * 100).rounded()))%"))
-                } header: {
-                    Text(AppLocalization.string("settings.liquid_glass", locale: interfaceLocale))
                 }
 
                 NavigationLink {
