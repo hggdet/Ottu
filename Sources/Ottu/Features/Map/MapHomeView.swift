@@ -409,7 +409,7 @@ struct MapHomeView: View {
                     }
                     .padding(.horizontal, 17)
                     .frame(height: 52)
-                    .glassEffect(.clear.interactive(), in: Capsule())
+                    .glassEffect(.regular.interactive(), in: Capsule())
                 }
             }
             if searchFocused, query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {

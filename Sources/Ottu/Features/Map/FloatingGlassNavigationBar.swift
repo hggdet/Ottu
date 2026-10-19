@@ -69,7 +69,7 @@ struct FloatingGlassNavigationBar: View {
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
-        .glassEffect(.clear.interactive(), in: Circle())
+        .glassEffect(.regular.interactive(), in: Circle())
         .accessibilityIdentifier("mapTab.\(tab.rawValue)")
         .accessibilityLabel(Text(title))
         .accessibilityAddTraits(isSelected ? .isSelected : [])
