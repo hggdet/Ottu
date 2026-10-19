@@ -11,9 +11,9 @@ permissions:
 
 jobs:
   ios26-glass-review:
-    # macos-latest is currently backed by macOS 26; the Xcode 26 and iOS 26
-    # runtime checks below remain mandatory before any app build or screenshots.
-    runs-on: macos-latest
+    # macos-15 has supported Xcode 26 and iOS 26 runtimes; keep both checks
+    # mandatory while testing whether runner allocation is specific to macOS 26.
+    runs-on: macos-15
     timeout-minutes: 60
 
     steps:
