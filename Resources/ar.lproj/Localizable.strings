@@ -294,7 +294,7 @@
 
 "map.settings.open" = "إعدادات الخريطة";
 "map.settings.title" = "إعدادات الخريطة";
-"map.settings.type" = "نوع الخريطة";
+"map.settings.current_style" = "نمط الخريطة الحالي";
 "map.settings.type.standard" = "قياسية";
 "map.settings.3d" = "المباني ثلاثية الأبعاد (3D)";
 "map.settings.voice_language" = "لغة التوجيه الصوتي";

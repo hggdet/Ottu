@@ -12,7 +12,7 @@ struct MapSettingsView: View {
                 LabeledContent {
                     Text(AppLocalization.string("map.settings.type.standard", locale: locale))
                 } label: {
-                    AppLocalizedLabel("map.settings.type", systemImage: "map", locale: locale)
+                    AppLocalizedLabel("map.settings.current_style", systemImage: "map", locale: locale)
                 }
             }
 
@@ -37,12 +37,16 @@ struct MapSettingsView: View {
             Section {
                 Picker(selection: $userLocationIconRawValue) {
                     ForEach(UserLocationIcon.allCases) { icon in
-                        Text(AppLocalization.string(icon.localizationKey, locale: locale))
+                        Label(
+                            AppLocalization.string(icon.localizationKey, locale: locale),
+                            systemImage: icon.symbolName
+                        )
                             .tag(icon.rawValue)
                     }
                 } label: {
                     AppLocalizedLabel("map.settings.user_location_icon", systemImage: "location.fill", locale: locale)
                 }
+                .pickerStyle(.inline)
             }
 
             Section {

@@ -294,7 +294,7 @@
 
 "map.settings.open" = "ڕێکخستنەکانی نەخشە";
 "map.settings.title" = "ڕێکخستنەکانی نەخشە";
-"map.settings.type" = "جۆری نەخشە";
+"map.settings.current_style" = "شێوازی ئێستای نەخشە";
 "map.settings.type.standard" = "ستاندارد";
 "map.settings.3d" = "بیناکانی سێڕەهەندی (3D)";
 "map.settings.voice_language" = "زمانی ڕێنمایی دەنگی";

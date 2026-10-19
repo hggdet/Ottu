@@ -294,7 +294,7 @@
 
 "map.settings.open" = "Map settings";
 "map.settings.title" = "Map settings";
-"map.settings.type" = "Map type";
+"map.settings.current_style" = "Current map style";
 "map.settings.type.standard" = "Standard";
 "map.settings.3d" = "3D buildings";
 "map.settings.voice_language" = "Voice guidance language";
