@@ -204,6 +204,22 @@ jobs:
           test -s artifacts/ios26-review/ottu-ios26-arabic-home-dark.png
           sips -g pixelWidth -g pixelHeight artifacts/ios26-review/ottu-ios26-arabic-home-dark.png \
             | tee artifacts/ios26-review/logs/screenshot-dark-dimensions.txt
+          xcrun simctl terminate "$SIMULATOR_UDID" iq.ottu.ios || true
+          xcrun simctl ui "$SIMULATOR_UDID" appearance light
+          xcrun simctl spawn "$SIMULATOR_UDID" defaults write iq.ottu.ios ottu.userLocationIcon -string moving || true
+          xcrun simctl launch "$SIMULATOR_UDID" iq.ottu.ios \
+            -ottu.initialSetupCompleted YES \
+            -ottu.welcomeMotionCompleted YES \
+            -ottu.language ar -ottu.appearance light \
+            -ottu.mapDisplayMode 2d -ottu.liquidGlassIntensity 1.0 \
+            -ottu.userLocationIcon moving -ottuReviewMapSettings \
+            2>&1 | tee artifacts/ios26-review/logs/launch-map-settings.log
+          sleep 2
+          xcrun simctl io "$SIMULATOR_UDID" screenshot \
+            artifacts/ios26-review/ottu-ios26-map-settings.png
+          test -s artifacts/ios26-review/ottu-ios26-map-settings.png
+          sips -g pixelWidth -g pixelHeight artifacts/ios26-review/ottu-ios26-map-settings.png \
+            | tee artifacts/ios26-review/logs/screenshot-map-settings-dimensions.txt
           xcrun simctl spawn "$SIMULATOR_UDID" log show --last 10m --style compact \
             --predicate 'process == "Ottu" OR process == "MapLibre"' \
             > artifacts/ios26-review/logs/simulator-app.log 2>&1 || true

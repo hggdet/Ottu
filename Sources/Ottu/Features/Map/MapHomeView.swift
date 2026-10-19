@@ -18,7 +18,11 @@ struct MapHomeView: View {
     @State private var results: [Place] = []
     @State private var isSearchExpanded = false
     @State private var activeSheet: HomeSheet?
+#if DEBUG
+    @State private var isSettingsPresented = ProcessInfo.processInfo.arguments.contains("-ottuReviewMapSettings")
+#else
     @State private var isSettingsPresented = false
+#endif
     @State private var placeToShowAfterSettings: Place?
     @State private var focusedPlace: Place?
     @State private var selectedQuickCategory: AssistantPlaceCategory?

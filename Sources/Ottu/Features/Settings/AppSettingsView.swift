@@ -19,6 +19,9 @@ struct AppSettingsView: View {
     @State private var shouldOfferAppSettings = false
     @State private var locationAlertTitleKey = "settings.location_unavailable_title"
     @State private var locationAlertMessageKey = "settings.location_unavailable_message"
+#if DEBUG
+    @State private var isReviewMapSettingsPresented = false
+#endif
 
     let savedPlaces: [Place]
     let communityPlaces: [Place]
@@ -162,9 +165,24 @@ struct AppSettingsView: View {
                     }
                 }
             }
+#if DEBUG
+            .navigationDestination(isPresented: $isReviewMapSettingsPresented) {
+                MapSettingsView(
+                    voiceLanguage: $navigationVoiceLanguage,
+                    mapDisplayMode: $mapDisplayMode,
+                    locale: interfaceLocale
+                )
+            }
+#endif
         }
         .environment(\.locale, interfaceLocale)
         .environment(\.layoutDirection, isRightToLeft ? .rightToLeft : .leftToRight)
+#if DEBUG
+        .onAppear {
+            guard ProcessInfo.processInfo.arguments.contains("-ottuReviewMapSettings") else { return }
+            DispatchQueue.main.async { isReviewMapSettingsPresented = true }
+        }
+#endif
         .onChange(of: locationManager.locationUpdateID) { _, updateID in
             handleLocationUpdate(updateID)
         }
