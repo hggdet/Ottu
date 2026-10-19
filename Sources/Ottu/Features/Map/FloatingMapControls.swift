@@ -2,48 +2,52 @@ import SwiftUI
 import UIKit
 
 struct FloatingMapControls: View {
+    @Binding var selection: MapNavigationTab
     @Environment(\.locale) private var locale
 
-    let onLocate: () -> Void
-    let onSaveCar: () -> Void
+    let onSelect: (MapNavigationTab) -> Void
+
+    private let orderedTabs: [MapNavigationTab] = [
+        .location,
+        .assistant,
+        .categories,
+        .settings
+    ]
 
     var body: some View {
         GlassEffectContainer(spacing: 8) {
-            VStack(spacing: 14) {
-                Button {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    onLocate()
-                } label: {
-                    Image(MapNavigationTab.location.icon)
-                        .renderingMode(.template)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 24, height: 24)
-                        .foregroundStyle(Color.primary)
-                        .frame(width: 46, height: 46)
-                        .contentShape(Circle())
+            VStack(spacing: 12) {
+                ForEach(orderedTabs) { tab in
+                    tabButton(for: tab)
                 }
-                .buttonStyle(.plain)
-                .glassEffect(.clear.interactive(), in: Circle())
-                .accessibilityIdentifier("mapTab.location")
-                .accessibilityLabel(Text(AppLocalization.string("navigation.location", locale: locale)))
-
-                Button {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    onSaveCar()
-                } label: {
-                    Image(systemName: "car.fill")
-                        .font(.system(size: 17, weight: .medium))
-                        .foregroundStyle(Color.primary)
-                        .frame(width: 46, height: 46)
-                        .contentShape(Circle())
-                }
-                .buttonStyle(.plain)
-                .glassEffect(.clear.interactive(), in: Circle())
-                .accessibilityIdentifier("mapSaveCar")
-                .accessibilityLabel(Text(AppLocalization.string("parked_car.save", locale: locale)))
             }
         }
+        .accessibilityIdentifier("mapNavigationBar")
         .accessibilityElement(children: .contain)
+    }
+
+    private func tabButton(for tab: MapNavigationTab) -> some View {
+        let isSelected = selection == tab
+        let title = AppLocalization.string(tab.titleKey, locale: locale)
+
+        return Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            selection = tab
+            onSelect(tab)
+        } label: {
+            Image(tab.icon)
+                .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 24, height: 24)
+                .foregroundStyle(isSelected ? Color.green : Color.primary)
+                .frame(width: 46, height: 46)
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .glassEffect(.clear.interactive(), in: Circle())
+        .accessibilityIdentifier("mapTab.\(tab.rawValue)")
+        .accessibilityLabel(Text(title))
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }

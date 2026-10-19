@@ -128,6 +128,8 @@ struct MapHomeView: View {
             )
             .ignoresSafeArea()
 
+            ProgressiveMapEdgeBlur()
+
             VStack(spacing: 10) {
                 Spacer(minLength: 0)
                 if !isNavigationActive, let statusKey = offlineManager.statusKey {
@@ -153,22 +155,25 @@ struct MapHomeView: View {
         .overlay(alignment: .bottom) {
             selectedPlaceBottomSheetOverlay
         }
-        .overlay(alignment: .trailing) {
-            if isNavigationActive {
-                NavigationSpeedometerPill(
-                    speedKilometersPerHour: locationManager.speedMetersPerSecond.map { $0 * 3.6 },
-                    glassIntensity: liquidGlassIntensity
-                )
-                .padding(.trailing, 14)
-                .offset(y: 28)
-                .transition(.move(edge: .trailing).combined(with: .opacity))
-            } else {
-                FloatingMapControls(
-                    onLocate: { selectNavigationTab(.location) },
-                    onSaveCar: saveParkedCarLocation
-                )
-                .padding(.trailing, 14)
+        .overlay {
+            HStack(spacing: 0) {
+                Spacer(minLength: 0)
+                if isNavigationActive {
+                    NavigationSpeedometerPill(
+                        speedKilometersPerHour: locationManager.speedMetersPerSecond.map { $0 * 3.6 },
+                        glassIntensity: liquidGlassIntensity
+                    )
+                    .offset(y: 28)
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
+                } else {
+                    FloatingMapControls(
+                        selection: $selectedTab,
+                        onSelect: selectNavigationTab
+                    )
+                }
             }
+            .padding(.trailing, 14)
+            .environment(\.layoutDirection, .leftToRight)
         }
         .overlay(alignment: .center) {
             if isAtDestination, let routeTarget {
@@ -231,26 +236,18 @@ struct MapHomeView: View {
             .zIndex(10)
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            Group {
-                if isNavigationActive {
-                    ActiveNavigationSummaryBar(
-                        eta: navigationETA,
-                        remainingDistance: navigationDistanceText(activeRemainingDistanceMeters),
-                        shareItem: navigationShareItem,
-                        glassIntensity: liquidGlassIntensity,
-                        onFinish: finishActiveNavigation
-                    )
-                } else {
-                    FloatingGlassNavigationBar(
-                        selection: $selectedTab,
-                        glassIntensity: liquidGlassIntensity,
-                        onSelect: selectNavigationTab
-                    )
-                }
-            }
+            if isNavigationActive {
+                ActiveNavigationSummaryBar(
+                    eta: navigationETA,
+                    remainingDistance: navigationDistanceText(activeRemainingDistanceMeters),
+                    shareItem: navigationShareItem,
+                    glassIntensity: liquidGlassIntensity,
+                    onFinish: finishActiveNavigation
+                )
                 .padding(.horizontal, 14)
                 .padding(.top, 8)
                 .padding(.bottom, 6)
+            }
         }
         .task(id: searchTaskKey) {
             let taskKey = searchTaskKey
@@ -372,7 +369,7 @@ struct MapHomeView: View {
                 )
                 .id(place.id)
                 .padding(.horizontal, 14)
-                .padding(.bottom, 88)
+                .padding(.bottom, 14)
                 .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
             }
         }
@@ -416,6 +413,7 @@ struct MapHomeView: View {
                     .glassEffect(.regular.interactive(), in: Capsule())
                 }
             }
+            .padding(.horizontal, 6)
             if searchFocused, query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 quickPlacesRow
                     .transition(.opacity)
