@@ -144,7 +144,14 @@ jobs:
           set -euo pipefail
           APP_PATH='build/ios26-derived/Build/Products/Debug-iphonesimulator/Ottu.app'
           test -d "$APP_PATH"
+          xcrun simctl terminate "$SIMULATOR_UDID" iq.ottu.ios || true
           xcrun simctl install "$SIMULATOR_UDID" "$APP_PATH"
+          # Installation/test-host launches may reset TCC. Grant only after the
+          # final install so the permission alert cannot cover review screenshots.
+          xcrun simctl privacy "$SIMULATOR_UDID" grant location iq.ottu.ios
+          xcrun simctl privacy "$SIMULATOR_UDID" grant location-always iq.ottu.ios
+          xcrun simctl location "$SIMULATOR_UDID" set 33.3152,44.3661
+          xcrun simctl ui "$SIMULATOR_UDID" appearance light
           # These are the app's existing @AppStorage keys. Mark first run complete
           # to bypass WelcomeMotionView and FirstRunSetupView without app changes.
           # Try simulator defaults first; argv overrides below also guarantee
