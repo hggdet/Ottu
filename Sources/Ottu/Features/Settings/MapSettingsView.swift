@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MapSettingsView: View {
     @Binding var voiceLanguage: String
+    @Binding var mapDisplayMode: String
     @AppStorage(UserLocationIcon.storageKey) private var userLocationIconRawValue = UserLocationIcon.arrow.rawValue
     let locale: Locale
 
@@ -13,6 +14,24 @@ struct MapSettingsView: View {
                 } label: {
                     AppLocalizedLabel("map.settings.type", systemImage: "map", locale: locale)
                 }
+            }
+
+            Section {
+                Toggle(isOn: Binding(
+                    get: { mapDisplayMode == "3d" },
+                    set: { mapDisplayMode = $0 ? "3d" : "2d" }
+                )) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        AppLocalizedText("map.settings.3d", locale: locale)
+                        AppLocalizedText("settings.map_display_hint", locale: locale)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .tint(.accentColor)
+            } header: {
+                AppLocalizedText("settings.map_display", locale: locale)
             }
 
             Section {

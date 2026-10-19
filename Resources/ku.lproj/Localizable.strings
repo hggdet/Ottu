@@ -318,6 +318,7 @@
 "navigation.location" = "شوێن";
 "map.settings.user_location_icon" = "هێمای شوێنی تۆ";
 "map.settings.user_location_icon.arrow" = "تیر (بنەڕەت)";
+"map.settings.user_location_icon.moving" = "نیشاندەری جووڵاو";
 "map.settings.user_location_icon.car" = "ئۆتۆمبێل";
 "map.settings.user_location_icon.walking" = "پیادەڕەوی";
 "map.settings.user_location_icon.bicycle" = "پاسکیل";

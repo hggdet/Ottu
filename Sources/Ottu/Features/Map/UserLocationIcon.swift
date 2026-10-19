@@ -2,6 +2,7 @@ import Foundation
 
 enum UserLocationIcon: String, CaseIterable, Identifiable {
     case arrow
+    case moving
     case car
     case walking
     case bicycle
@@ -13,6 +14,7 @@ enum UserLocationIcon: String, CaseIterable, Identifiable {
     var symbolName: String {
         switch self {
         case .arrow: return "location.north.fill"
+        case .moving: return "location.north.circle.fill"
         case .car: return "car.fill"
         case .walking: return "figure.walk"
         case .bicycle: return "bicycle"

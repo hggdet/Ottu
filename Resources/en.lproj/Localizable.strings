@@ -318,6 +318,7 @@
 "navigation.location" = "Location";
 "map.settings.user_location_icon" = "Your location icon";
 "map.settings.user_location_icon.arrow" = "Arrow (default)";
+"map.settings.user_location_icon.moving" = "Moving marker";
 "map.settings.user_location_icon.car" = "Car";
 "map.settings.user_location_icon.walking" = "Walking";
 "map.settings.user_location_icon.bicycle" = "Bicycle";

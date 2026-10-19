@@ -60,6 +60,7 @@ struct MapHomeView: View {
     @State private var searchRetryToken = 0
     @State private var searchErrorMessage: String?
     @AppStorage("ottu.navigationVoiceLanguage") private var navigationVoiceLanguage = "auto"
+    @AppStorage("ottu.mapDisplayMode") private var mapDisplayMode = "2d"
     private let liquidGlassIntensity = 1.0
     @AppStorage("ottu.distanceUnit") private var distanceUnit = "km"
     @AppStorage("ottu.routing.transportMode") private var transportModeRawValue = RouteTransportMode.driving.rawValue
@@ -106,7 +107,7 @@ struct MapHomeView: View {
                 alternativeRoutes: isNavigationActive || focusedPlace == nil ? [] : previewAlternativeRoutes,
                 alternativeRouteLabels: isNavigationActive || focusedPlace == nil ? [:] : previewAlternativeLabels,
                 styleURL: MapConfiguration.styleURL(isDark: colorScheme == .dark),
-                is3D: false,
+                is3D: mapDisplayMode == "3d",
                 isNavigationActive: isNavigationActive,
                 navigationCoordinate: isNavigationActive ? (locationManager.coordinate ?? routePlan?.coordinates.first) : nil,
                 navigationCourse: isNavigationActive ? locationManager.course : nil,
@@ -310,6 +311,7 @@ struct MapHomeView: View {
             AppSettingsView(
                 selectedLanguage: $selectedLanguage,
                 navigationVoiceLanguage: $navigationVoiceLanguage,
+                mapDisplayMode: $mapDisplayMode,
                 locationManager: locationManager,
                 iraqBuildingsManager: iraqBuildingsManager,
                 savedPlaces: localStore.savedPlaces,

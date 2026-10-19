@@ -318,6 +318,7 @@
 "navigation.location" = "الموقع";
 "map.settings.user_location_icon" = "رمز موقعك";
 "map.settings.user_location_icon.arrow" = "السهم (افتراضي)";
+"map.settings.user_location_icon.moving" = "مؤشر متحرك";
 "map.settings.user_location_icon.car" = "سيارة";
 "map.settings.user_location_icon.walking" = "المشي";
 "map.settings.user_location_icon.bicycle" = "دراجة";

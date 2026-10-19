@@ -5,6 +5,7 @@ struct AppSettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Binding var selectedLanguage: String
     @Binding var navigationVoiceLanguage: String
+    @Binding var mapDisplayMode: String
     @ObservedObject var locationManager: UserLocationManager
     @ObservedObject var iraqBuildingsManager: IraqBuildingFootprintsManager
     @AppStorage("ottu.distanceUnit") private var distanceUnit = "km"
@@ -60,6 +61,7 @@ struct AppSettingsView: View {
                 NavigationLink {
                     MapSettingsView(
                         voiceLanguage: $navigationVoiceLanguage,
+                        mapDisplayMode: $mapDisplayMode,
                         locale: interfaceLocale
                     )
                 } label: {
