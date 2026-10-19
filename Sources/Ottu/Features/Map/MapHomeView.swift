@@ -1126,9 +1126,6 @@ struct MapHomeView: View {
         case .place(let place):
             PlaceDetailsSheet(
                 place: place,
-                isSaved: localStore.isSaved(place),
-                onToggleSaved: { localStore.toggleSaved(place) },
-                onDirections: { startRoute(to: place) },
                 onReport: { activeSheet = .report(place.coordinate) }
             )
         case .saved:
@@ -1173,7 +1170,6 @@ struct MapHomeView: View {
             MapSettingsSheet(
                 mapDisplayMode: $mapDisplayMode,
                 voiceLanguage: $navigationVoiceLanguage,
-                selectedLanguage: $selectedLanguage,
                 locale: locale,
                 glassIntensity: liquidGlassIntensity
             )
@@ -1206,18 +1202,12 @@ struct MapHomeView: View {
             MapCategoriesSheet(
                 locale: locale,
                 onSelectCategory: { category in
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    query = category
-                    searchRetryToken += 1
-                    searchFocused = false
+                    searchNearbyPlaces(for: category)
                     selectedTab = .categories
                     activeSheet = nil
                 },
                 onSelectAction: { action in
                     switch action {
-                    case .location:
-                        activeSheet = nil
-                        centerOnMyLocation()
                     case .saved:
                         activeSheet = .saved
                     case .addPlace:

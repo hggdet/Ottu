@@ -9,7 +9,6 @@ struct AppSettingsView: View {
     @AppStorage("ottu.distanceUnit") private var distanceUnit = "km"
     @AppStorage("ottu.appearance") private var selectedAppearance = "system"
     @AppStorage("ottu.liquidGlassIntensity") private var liquidGlassIntensity = 1.0
-    @AppStorage("ottu.mapDisplayMode") private var mapDisplayMode = "2d"
     @State private var isWaitingForLocation = false
     @State private var requestedLocationUpdateID = 0
     @State private var locationRequestTimeout: Task<Void, Never>?
@@ -57,14 +56,6 @@ struct AppSettingsView: View {
                     Label(AppLocalization.string("settings.appearance.light", locale: interfaceLocale), systemImage: "sun.max").tag("light")
                     Label(AppLocalization.string("settings.appearance.dark", locale: interfaceLocale), systemImage: "moon").tag("dark")
                 }
-
-                Picker(selection: $mapDisplayMode, label: Text(AppLocalization.string("settings.map_display", locale: interfaceLocale))) {
-                    Label(AppLocalization.string("settings.map_display.2d", locale: interfaceLocale), systemImage: "map").tag("2d")
-                    Label(AppLocalization.string("settings.map_display.3d", locale: interfaceLocale), systemImage: "view.3d").tag("3d")
-                }
-                Text(AppLocalization.string("settings.map_display_hint", locale: interfaceLocale))
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
 
                 Section {
                     Button(action: shareCurrentLocation) {

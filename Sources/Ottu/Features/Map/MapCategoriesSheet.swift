@@ -2,7 +2,7 @@ import SwiftUI
 
 struct MapCategoriesSheet: View {
     let locale: Locale
-    let onSelectCategory: (String) -> Void
+    let onSelectCategory: (AssistantPlaceCategory) -> Void
     let onSelectAction: (MapCategoryAction) -> Void
     let onDismiss: () -> Void
 
@@ -60,7 +60,7 @@ struct MapCategoriesSheet: View {
 
     private func placeCategoryButton(_ category: MapPlaceCategory) -> some View {
         Button {
-            onSelectCategory(category.searchQuery(for: locale))
+            onSelectCategory(category.nearbyCategory)
         } label: {
             VStack(spacing: 11) {
                 Image(systemName: category.symbol)
@@ -113,7 +113,6 @@ struct MapCategoriesSheet: View {
 }
 
 enum MapCategoryAction: String, CaseIterable, Identifiable {
-    case location
     case saved
     case addPlace
     case report
@@ -123,7 +122,6 @@ enum MapCategoryAction: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .location: "location.my_location"
         case .saved: "saved.title"
         case .addPlace: "community.add_place"
         case .report: "incident.report"
@@ -133,7 +131,6 @@ enum MapCategoryAction: String, CaseIterable, Identifiable {
 
     var symbol: String {
         switch self {
-        case .location: "location.north"
         case .saved: "bookmark"
         case .addPlace: "plus"
         case .report: "exclamationmark.bubble"
@@ -143,64 +140,32 @@ enum MapCategoryAction: String, CaseIterable, Identifiable {
 }
 
 private enum MapPlaceCategory: String, CaseIterable, Identifiable {
-    case restaurants
-    case cafes
     case markets
-    case pharmacies
     case hospitals
-    case fuel
     case parks
     case hotels
 
     var id: String { rawValue }
 
     var title: String {
-        switch self {
-        case .restaurants: "categories.restaurants"
-        case .cafes: "categories.cafes"
-        case .markets: "categories.markets"
-        case .pharmacies: "categories.pharmacies"
-        case .hospitals: "categories.hospitals"
-        case .fuel: "categories.fuel"
-        case .parks: "categories.parks"
-        case .hotels: "categories.hotels"
-        }
+        nearbyCategory.titleKey
     }
 
     var symbol: String {
         switch self {
-        case .restaurants: "fork.knife"
-        case .cafes: "cup.and.saucer"
         case .markets: "basket"
-        case .pharmacies: "cross.case"
         case .hospitals: "cross"
-        case .fuel: "fuelpump"
         case .parks: "tree"
         case .hotels: "bed.double"
         }
     }
 
-    func searchQuery(for locale: Locale) -> String {
-        let language = AppLocalization.languageCode(for: locale)
-        let terms: [String: String]
+    var nearbyCategory: AssistantPlaceCategory {
         switch self {
-        case .restaurants:
-            terms = ["ar": "مطاعم", "ku": "چێشتخانەکان", "en": "Restaurants"]
-        case .cafes:
-            terms = ["ar": "مقاهٍ", "ku": "قاوەخانەکان", "en": "Cafes"]
-        case .markets:
-            terms = ["ar": "أسواق", "ku": "بازاڕەکان", "en": "Markets"]
-        case .pharmacies:
-            terms = ["ar": "صيدليات", "ku": "دەرمانخانەکان", "en": "Pharmacies"]
-        case .hospitals:
-            terms = ["ar": "مستشفيات", "ku": "نەخۆشخانەکان", "en": "Hospitals"]
-        case .fuel:
-            terms = ["ar": "محطات وقود", "ku": "پەمپەکانی سووتەمەنی", "en": "Gas stations"]
-        case .parks:
-            terms = ["ar": "حدائق", "ku": "باخچەکان", "en": "Parks"]
-        case .hotels:
-            terms = ["ar": "فنادق", "ku": "هوتێلەکان", "en": "Hotels"]
+        case .markets: .market
+        case .hospitals: .hospital
+        case .parks: .park
+        case .hotels: .hotel
         }
-        return terms[language] ?? terms["en"]!
     }
 }

@@ -34,6 +34,12 @@ struct FloatingGlassNavigationBar: View {
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.locale) private var locale
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Namespace private var selectionNamespace
+
+    private var selectionAnimation: Animation {
+        .spring(response: 0.34, dampingFraction: 0.86, blendDuration: 0.06)
+    }
 
     private var normalizedGlassIntensity: Double {
         min(max(glassIntensity, 0), 1)
@@ -54,6 +60,12 @@ struct FloatingGlassNavigationBar: View {
     var body: some View {
         adaptiveNavigationBar
             .accessibilityElement(children: .contain)
+            .animation(reduceMotion ? nil : selectionAnimation, value: selection)
+            .transaction { transaction in
+                if reduceMotion {
+                    transaction.animation = nil
+                }
+            }
     }
 
     private var adaptiveNavigationBar: some View {
@@ -76,8 +88,12 @@ struct FloatingGlassNavigationBar: View {
         let title = AppLocalization.string(tab.titleKey, locale: locale)
 
         return Button {
-            withAnimation(.spring(response: 0.34, dampingFraction: 0.86, blendDuration: 0.06)) {
+            if reduceMotion {
                 selection = tab
+            } else {
+                withAnimation(selectionAnimation) {
+                    selection = tab
+                }
             }
             onSelect(tab)
         } label: {
@@ -97,8 +113,9 @@ struct FloatingGlassNavigationBar: View {
             .contentShape(Capsule())
             .background {
                 if isSelected {
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    Capsule()
                         .fill(selectionHighlightColor)
+                        .matchedGeometryEffect(id: "selected-tab-indicator", in: selectionNamespace)
                 }
             }
         }

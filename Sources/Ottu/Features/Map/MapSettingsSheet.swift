@@ -3,7 +3,6 @@ import SwiftUI
 struct MapSettingsSheet: View {
     @Binding var mapDisplayMode: String
     @Binding var voiceLanguage: String
-    @Binding var selectedLanguage: String
 
     let locale: Locale
     let glassIntensity: Double
@@ -14,15 +13,6 @@ struct MapSettingsSheet: View {
         case "en": "map.settings.voice_language.en"
         case "ku": "map.settings.voice_language.ku"
         default: "map.settings.voice_language.auto"
-        }
-    }
-
-    private var selectedAppLanguageKey: String {
-        switch selectedLanguage {
-        case "ar": "settings.language.arabic"
-        case "en": "settings.language.english"
-        case "ku": "settings.language.kurdish"
-        default: "settings.language.system"
         }
     }
 
@@ -38,61 +28,6 @@ struct MapSettingsSheet: View {
                     Spacer()
                 }
                 .padding(.horizontal, 2)
-
-                VStack(alignment: .leading, spacing: 10) {
-                    AppLocalizedText("map.settings.type", locale: locale)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.secondary)
-
-                    HStack(spacing: 10) {
-                        Image(systemName: "map")
-                            .foregroundStyle(Color.accentColor)
-                        AppLocalizedText("map.settings.type.standard", locale: locale)
-                            .font(.body.weight(.medium))
-                        Spacer()
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundStyle(Color.accentColor)
-                            .accessibilityHidden(true)
-                    }
-                    .padding(14)
-                    .mapGlassSurface(cornerRadius: 18, glassIntensity: glassIntensity)
-                    .accessibilityElement(children: .combine)
-                    .accessibilityAddTraits(.isSelected)
-                }
-
-                VStack(alignment: .leading, spacing: 10) {
-                    AppLocalizedText("map.settings.app_language", locale: locale)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.secondary)
-
-                    Menu {
-                        Picker(selection: $selectedLanguage) {
-                            languageOption("system", key: "settings.language.system")
-                            languageOption("ar", key: "settings.language.arabic")
-                            languageOption("en", key: "settings.language.english")
-                            languageOption("ku", key: "settings.language.kurdish")
-                        } label: {
-                            AppLocalizedText("map.settings.app_language", locale: locale)
-                        }
-                    } label: {
-                        HStack(spacing: 10) {
-                            Image(systemName: "globe")
-                                .foregroundStyle(Color.accentColor)
-                            AppLocalizedText(selectedAppLanguageKey, locale: locale)
-                                .font(.body.weight(.medium))
-                            Spacer()
-                            Image(systemName: "chevron.up.chevron.down")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.secondary)
-                        }
-                        .padding(14)
-                        .contentShape(Rectangle())
-                        .mapGlassSurface(cornerRadius: 18, glassIntensity: glassIntensity)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(Text(AppLocalization.string("map.settings.app_language", locale: locale)))
-                    .accessibilityValue(Text(AppLocalization.string(selectedAppLanguageKey, locale: locale)))
-                }
 
                 VStack(alignment: .leading, spacing: 10) {
                     AppLocalizedText("settings.map_display", locale: locale)
@@ -169,8 +104,4 @@ struct MapSettingsSheet: View {
             .tag(value)
     }
 
-    private func languageOption(_ value: String, key: String) -> some View {
-        Text(AppLocalization.string(key, locale: locale))
-            .tag(value)
-    }
 }
