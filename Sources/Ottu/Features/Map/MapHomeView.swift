@@ -535,66 +535,65 @@ struct MapHomeView: View {
     private func searchPanel(maxResultsHeight: CGFloat) -> some View {
         VStack(spacing: 8) {
             HStack(spacing: 10) {
-                GlassEffectContainer(spacing: 8) {
+                MapWeatherButton(
+                    coordinate: locationManager.coordinate ?? mapCenter,
+                    locale: locale,
+                    assistantService: assistantService
+                )
+                if isSearchOpen {
                     HStack(spacing: 10) {
-                        MapWeatherButton(
-                            coordinate: locationManager.coordinate ?? mapCenter,
-                            locale: locale,
-                            assistantService: assistantService
-                        )
-                        if isSearchOpen {
-                            HStack(spacing: 10) {
-                                Button {
-                                    searchFocused = false
-                                    isSearchOpen = false
-                                    query = ""
-                                    searchErrorMessage = nil
-                                    isSearchExpanded = false
-                                } label: {
-                                    Image(systemName: "xmark")
-                                        .foregroundStyle(.secondary)
-                                        .frame(width: 28, height: 44)
-                                }
-                                .buttonStyle(.plain)
-                                .accessibilityLabel(Text(AppLocalization.string("common.close", locale: locale)))
-                                .accessibilityIdentifier("placeSearchClose")
-                                TextField(AppLocalization.string("search.placeholder", locale: locale), text: $query)
-                                    .focused($searchFocused)
-                                    .textFieldStyle(.plain)
-                                    .textInputAutocapitalization(.never)
-                                    .autocorrectionDisabled()
-                                    .submitLabel(.search)
-                                    .onSubmit { searchFocused = false }
-                                    .onAppear { searchFocused = true }
-                                    .accessibilityIdentifier("placeSearchField")
-                                if isSearching {
-                                    ProgressView().controlSize(.small)
-                                }
-                                if !query.isEmpty {
-                                    Button {
-                                        query = ""
-                                        searchErrorMessage = nil
-                                        isSearchExpanded = false
-                                        searchFocused = true
-                                    } label: {
-                                        Image(systemName: "xmark.circle.fill")
-                                            .foregroundStyle(.secondary)
-                                            .frame(width: 28, height: 44)
-                                    }
-                                    .buttonStyle(.plain)
-                                    .accessibilityLabel(Text(AppLocalization.string("search.clear", locale: locale)))
-                                    .accessibilityIdentifier("placeSearchClear")
-                                }
+                        Button {
+                            searchFocused = false
+                            isSearchOpen = false
+                            query = ""
+                            searchErrorMessage = nil
+                            isSearchExpanded = false
+                        } label: {
+                            Image(systemName: "xmark")
+                                .foregroundStyle(.secondary)
+                                .frame(width: 44, height: 44)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(Text(AppLocalization.string("common.close", locale: locale)))
+                        .accessibilityIdentifier("placeSearchClose")
+                        TextField(AppLocalization.string("search.placeholder", locale: locale), text: $query)
+                            .focused($searchFocused)
+                            .textFieldStyle(.plain)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .submitLabel(.search)
+                            .onSubmit { searchFocused = false }
+                            .onAppear { searchFocused = true }
+                            .accessibilityIdentifier("placeSearchField")
+                        if isSearching {
+                            ProgressView().controlSize(.small)
+                        }
+                        if !query.isEmpty {
+                            Button {
+                                query = ""
+                                searchErrorMessage = nil
+                                isSearchExpanded = false
+                                searchFocused = true
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 44, height: 44)
                             }
-                            .padding(.horizontal, 12)
-                            .frame(height: 48)
-                            .glassEffect(.regular.interactive(), in: Capsule())
-                            .transition(.opacity)
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(Text(AppLocalization.string("search.clear", locale: locale)))
+                            .accessibilityIdentifier("placeSearchClear")
                         }
                     }
+                    .padding(.horizontal, 12)
+                    .frame(height: 48)
+                    .background {
+                        Capsule()
+                            .fill(.clear)
+                            .glassEffect(.regular, in: Capsule())
+                            .allowsHitTesting(false)
+                    }
+                    .transition(.opacity)
                 }
-                // Keep the circular tap target outside the glass group, whose
-                // layout may span the full row while transitioning its contents.
                 if !isSearchOpen {
                     Button {
                         isSearchOpen = true
