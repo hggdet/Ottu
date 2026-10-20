@@ -332,7 +332,13 @@ struct MapAssistantView: View {
                 messages.append(AssistantMessage(text: localized(failureKey), isUser: false,
                                                  places: nil, retryText: text))
             case .timedOut:
-                messages.append(AssistantMessage(text: localized("assistant.timed_out"), isUser: false,
+                let timeoutKey: String
+                if case .nearby = AssistantIntentMatcher.match(text) {
+                    timeoutKey = "assistant.nearby_unavailable"
+                } else {
+                    timeoutKey = "assistant.timed_out"
+                }
+                messages.append(AssistantMessage(text: localized(timeoutKey), isUser: false,
                                                  places: nil, retryText: text))
             case .cancelled:
                 messages.append(AssistantMessage(text: localized("assistant.cancelled"), isUser: false,

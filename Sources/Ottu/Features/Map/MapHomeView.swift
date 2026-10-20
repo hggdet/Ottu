@@ -28,11 +28,7 @@ struct MapHomeView: View {
     @State private var placeToShowAfterSettings: Place?
     @State private var focusedPlace: Place?
     @State private var selectedQuickCategory: AssistantPlaceCategory?
-    @State private var nearbyResults: [Place] = []
-    @State private var isSearchingNearby = false
-    @State private var nearbySearchError: String?
-    @State private var nearbySearchTask: Task<Void, Never>?
-    @State private var nearbySearchRequestID = UUID()
+    @StateObject private var nearbySearch = MapHomeView.makeNearbySearchController()
     @State private var routePlan: RoutePlan?
     @State private var routeAlternatives: [RoutePlan] = []
     @State private var routeTarget: Place?
@@ -92,6 +88,37 @@ struct MapHomeView: View {
     private let routeService: any RoutingProviding = OSRMRouteService()
 
     private let quickCategories: [AssistantPlaceCategory] = [.restaurant, .cafe, .fuel, .pharmacy]
+
+    private var nearbyResults: [Place] {
+        if case .results(let places) = nearbySearch.state { return places }
+        return []
+    }
+
+    private var isSearchingNearby: Bool { nearbySearch.state == .loading }
+
+    private var nearbySearchError: String? {
+        guard nearbySearch.state == .unavailable else { return nil }
+        return AppLocalization.string("assistant.nearby_unavailable", locale: locale)
+    }
+
+    private var nearbySearchAccessibilityState: String {
+        switch nearbySearch.state {
+        case .idle: "idle"
+        case .loading: "loading"
+        case .results: "results"
+        case .empty: "empty"
+        case .unavailable: "error"
+        }
+    }
+
+    private static func makeNearbySearchController() -> NearbySearchController {
+#if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-ottuUITestNearbySearchFixture") {
+            return NearbySearchController(service: NearbySearchUITestFixtureService())
+        }
+#endif
+        return NearbySearchController(service: OpenStreetMapAssistantService())
+    }
 
     private var currentLanguage: String {
         AppLocalization.languageCode(for: locale)
@@ -165,7 +192,7 @@ struct MapHomeView: View {
                 onSelectAlternativeRoute: selectPreviewRoute,
                 onSelectParkedCar: { activeSheet = .parkedCar },
                 onLongPress: { coordinate in
-                    searchFocused = false
+                    dismissSearch()
                     activeSheet = .addPlace(coordinate)
                 },
                 onCenterChanged: { mapCenter = $0 },
@@ -317,6 +344,19 @@ struct MapHomeView: View {
             }
         }
         .task {
+#if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("-ottuUITestSearchSelectionFixture") {
+                localStore.clearRecentPlaces()
+                localStore.addRecentPlace(Place(
+                    id: "ottu-ui-test-search-selection",
+                    name: "UI Test Selection Place",
+                    street: nil,
+                    city: nil,
+                    country: nil,
+                    coordinate: GeoCoordinate(latitude: 33.3152, longitude: 44.3661)
+                ))
+            }
+#endif
             guard locationFocusPolicy.start() else { return }
             applyPendingLocationFocus()
             switch locationManager.authorizationStatus {
@@ -397,6 +437,13 @@ struct MapHomeView: View {
                   selectedQuickCategory != nil else { return }
             clearNearbySearch()
         }
+        .onChange(of: activeSheet?.id) { _, newSheetID in
+            if newSheetID != nil { dismissSearch() }
+        }
+        .onChange(of: isSettingsPresented) { _, isPresented in
+            if isPresented { dismissSearch() }
+        }
+        .onDisappear { clearNearbySearch() }
         .sheet(item: $activeSheet, onDismiss: {
             if selectedTab == .assistant || selectedTab == .categories { selectedTab = .location }
         }) { sheet in
@@ -524,6 +571,8 @@ struct MapHomeView: View {
                     }
                 )
                 .id(place.id)
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("selectedPlaceBottomSheet.\(place.id)")
                 .padding(.horizontal, 14)
                 .padding(.bottom, 14)
                 .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
@@ -543,11 +592,7 @@ struct MapHomeView: View {
                 if isSearchOpen {
                     HStack(spacing: 10) {
                         Button {
-                            searchFocused = false
-                            isSearchOpen = false
-                            query = ""
-                            searchErrorMessage = nil
-                            isSearchExpanded = false
+                            dismissSearch()
                         } label: {
                             Image(systemName: "xmark")
                                 .foregroundStyle(.secondary)
@@ -568,7 +613,8 @@ struct MapHomeView: View {
                                 // Focus only after the inserted field has mounted. The task
                                 // is cancelled when closing removes it from the hierarchy.
                                 await Task.yield()
-                                guard !Task.isCancelled, isSearchOpen else { return }
+                                guard !Task.isCancelled, isSearchOpen,
+                                      activeSheet == nil, !isSettingsPresented else { return }
                                 searchFocused = true
                             }
                             .accessibilityIdentifier("placeSearchField")
@@ -816,6 +862,7 @@ struct MapHomeView: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(Text(AppLocalization.string(category.titleKey, locale: locale)))
+                    .accessibilityIdentifier("mapQuickCategory.\(category.rawValue)")
                     .accessibilityAddTraits(isSelected ? .isSelected : [])
                 }
             }
@@ -847,6 +894,15 @@ struct MapHomeView: View {
                         .font(.subheadline.weight(.semibold))
                     Spacer()
                     if isSearchingNearby { ProgressView().controlSize(.small) }
+                    Button(action: clearNearbySearch) {
+                        Image(systemName: "xmark")
+                            .foregroundStyle(.secondary)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(Text(AppLocalization.string("common.close", locale: locale)))
+                    .accessibilityIdentifier("mapCategoryResultsClose")
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 11)
@@ -856,9 +912,29 @@ struct MapHomeView: View {
             if isSearchingNearby {
                 HStack(spacing: 9) {
                     ProgressView().controlSize(.small)
+#if DEBUG
+                    if ProcessInfo.processInfo.arguments.contains("-ottuUITestNearbySearchFixture") {
+                        Button {
+                            Task { await NearbySearchUITestFailureGate.shared.release() }
+                        } label: {
+                            AppLocalizedText("map.category.loading", locale: locale)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("mapCategoryResultsState.loading")
+                    } else {
+                        AppLocalizedText("map.category.loading", locale: locale)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .accessibilityIdentifier("mapCategoryResultsState.loading")
+                    }
+#else
                     AppLocalizedText("map.category.loading", locale: locale)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("mapCategoryResultsState.loading")
+#endif
                     Spacer()
                 }
                 .padding(15)
@@ -871,12 +947,14 @@ struct MapHomeView: View {
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("mapCategoryResultsState.error")
                     Button {
-                        if let selectedQuickCategory { searchNearbyPlaces(for: selectedQuickCategory) }
+                        nearbySearch.retry()
                     } label: {
                         Image(systemName: "arrow.clockwise")
                     }
                     .accessibilityLabel(Text(AppLocalization.string("search.retry", locale: locale)))
+                    .accessibilityIdentifier("mapCategoryResultsRetry")
                 }
                 .padding(14)
             } else if nearbyResults.isEmpty {
@@ -885,6 +963,7 @@ struct MapHomeView: View {
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(15)
+                    .accessibilityIdentifier("mapCategoryResultsState.empty")
             } else {
                 ForEach(nearbyResults) { place in
                     Button {
@@ -920,16 +999,15 @@ struct MapHomeView: View {
         }
         .frame(maxWidth: .infinity)
         .frame(maxHeight: maxHeight)
-        .mapGlassSurface(cornerRadius: 24, glassIntensity: liquidGlassIntensity)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("mapCategoryResultsPanel")
+        .accessibilityValue(nearbySearchAccessibilityState)
     }
 
     private func searchNearbyPlaces(for category: AssistantPlaceCategory) {
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        searchFocused = false
-        isSearchOpen = false
-        query = ""
+        dismissSearch()
         results = []
-        isSearchExpanded = false
         focusedPlace = nil
         routePreviewTask?.cancel()
         routePreviewPlan = nil
@@ -937,42 +1015,22 @@ struct MapHomeView: View {
         isPreviewingRoute = false
         routePreviewUnavailable = false
         selectedQuickCategory = category
-        nearbyResults = []
-        nearbySearchError = nil
-        isSearchingNearby = true
-        nearbySearchTask?.cancel()
-
-        let requestID = UUID()
-        nearbySearchRequestID = requestID
+        nearbySearch.cancel()
         let origin = locationManager.coordinate ?? mapCenter
-        let language = currentLanguage
-        nearbySearchTask = Task {
-            do {
-                let matches = try await assistantService.nearbyPlaces(
-                    for: category,
-                    near: origin,
-                    language: language
-                )
-                guard !Task.isCancelled, nearbySearchRequestID == requestID else { return }
-                nearbyResults = matches
-            } catch is CancellationError {
-                return
-            } catch {
-                guard !Task.isCancelled, nearbySearchRequestID == requestID else { return }
-                nearbySearchError = localizedSearchFailure(for: error)
-            }
-            guard nearbySearchRequestID == requestID else { return }
-            isSearchingNearby = false
-        }
+        nearbySearch.search(for: category, near: origin, language: currentLanguage)
     }
 
     private func clearNearbySearch() {
-        nearbySearchTask?.cancel()
-        nearbySearchRequestID = UUID()
+        nearbySearch.cancel()
         selectedQuickCategory = nil
-        nearbyResults = []
-        nearbySearchError = nil
-        isSearchingNearby = false
+    }
+
+    private func dismissSearch() {
+        searchFocused = false
+        isSearchOpen = false
+        query = ""
+        searchErrorMessage = nil
+        isSearchExpanded = false
     }
 
     private func selectPlace(_ place: Place) {
@@ -980,10 +1038,7 @@ struct MapHomeView: View {
         routeCameraPolicy.beginOverview()
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
         localStore.addRecentPlace(place)
-        searchFocused = false
-        isSearchOpen = false
-        query = ""
-        isSearchExpanded = false
+        dismissSearch()
         clearNearbySearch()
         activeSheet = nil
 
@@ -1448,18 +1503,18 @@ struct MapHomeView: View {
     private func selectNavigationTab(_ tab: MapNavigationTab) {
         switch tab {
         case .location:
-            searchFocused = false
+            dismissSearch()
             activeSheet = nil
             centerOnMyLocation()
         case .categories:
-            searchFocused = false
+            dismissSearch()
             activeSheet = .categories
         case .settings:
-            searchFocused = false
+            dismissSearch()
             activeSheet = nil
             isSettingsPresented = true
         case .assistant:
-            searchFocused = false
+            dismissSearch()
             if locationManager.coordinate == nil { locationManager.requestLocation() }
             activeSheet = .assistant
         }
@@ -1947,3 +2002,65 @@ private enum HomeSheet: Identifiable {
         }
     }
 }
+
+#if DEBUG
+// Only the explicitly enabled UI fixture uses this signal. Its first provider
+// response stays suspended until XCTest has observed and tapped the loading label.
+private actor NearbySearchUITestFailureGate {
+    static let shared = NearbySearchUITestFailureGate()
+    private var released = false
+    private var continuation: CheckedContinuation<Void, Never>?
+
+    func wait() async {
+        guard !released else { return }
+        await withCheckedContinuation { continuation in
+            self.continuation = continuation
+        }
+    }
+
+    func release() {
+        released = true
+        let pending = continuation
+        continuation = nil
+        pending?.resume()
+    }
+}
+
+private actor NearbySearchUITestAttemptCounter {
+    private var attempts = 0
+
+    func nextAttempt() -> Int {
+        attempts += 1
+        return attempts
+    }
+}
+
+private struct NearbySearchUITestFixtureService: MapAssistantProviding {
+    private let attemptCounter = NearbySearchUITestAttemptCounter()
+
+    func nearbyPlaces(
+        for category: AssistantPlaceCategory,
+        near coordinate: GeoCoordinate,
+        language: String
+    ) async throws -> [Place] {
+        if await attemptCounter.nextAttempt() == 1 {
+            await NearbySearchUITestFailureGate.shared.wait()
+            throw NearbySearchUITestFixtureError.unavailable
+        }
+        return []
+    }
+
+    func weather(at coordinate: GeoCoordinate) async throws -> AssistantWeather {
+        throw NearbySearchUITestFixtureError.unexpectedRequest
+    }
+
+    func nearbyStreet(at coordinate: GeoCoordinate, language: String) async throws -> String? {
+        nil
+    }
+}
+
+private enum NearbySearchUITestFixtureError: Error {
+    case unavailable
+    case unexpectedRequest
+}
+#endif

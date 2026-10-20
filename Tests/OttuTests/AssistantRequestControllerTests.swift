@@ -46,6 +46,42 @@ final class AssistantRequestControllerTests: XCTestCase {
         XCTAssertFalse(controller.isWorking)
     }
 
+    func testFailureClearsLoadingAndAllowsRetry() async {
+        enum ExpectedError: Error { case unavailable }
+
+        let controller = AssistantRequestController<String>(timeout: 1)
+        let failed = expectation(description: "failure reported")
+        let retried = expectation(description: "retry succeeded")
+        var outcomes: [String] = []
+
+        controller.start(operation: { throw ExpectedError.unavailable }) { outcome in
+            guard case .failure = outcome else {
+                XCTFail("Expected failure, received \(outcome)")
+                failed.fulfill()
+                return
+            }
+            outcomes.append("failure")
+            failed.fulfill()
+        }
+
+        await fulfillment(of: [failed], timeout: 1)
+        XCTAssertFalse(controller.isWorking)
+
+        controller.start(operation: { "recovered" }) { outcome in
+            guard case let .success(value) = outcome else {
+                XCTFail("Expected retry success, received \(outcome)")
+                retried.fulfill()
+                return
+            }
+            outcomes.append("success:\(value)")
+            retried.fulfill()
+        }
+
+        await fulfillment(of: [retried], timeout: 1)
+        XCTAssertEqual(outcomes, ["failure", "success:recovered"])
+        XCTAssertFalse(controller.isWorking)
+    }
+
     func testCancellationErrorsAreReportedAsCancelled() async {
         let controller = AssistantRequestController<String>(timeout: 1)
         let taskCancellationReported = expectation(description: "task cancellation reported")

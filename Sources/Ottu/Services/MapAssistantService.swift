@@ -181,6 +181,8 @@ struct OpenStreetMapAssistantService: MapAssistantProviding {
                 if places.isEmpty {
                     logger.info("Overpass endpoint \(endpointLabel, privacy: .public) returned a valid response with no named places")
                 }
+                // A well-formed, remark-free Overpass response is authoritative even when empty.
+                // Only provider failures fall through; never invent POIs from unrelated map data.
                 return places
             } catch is CancellationError {
                 throw CancellationError()
@@ -197,6 +199,7 @@ struct OpenStreetMapAssistantService: MapAssistantProviding {
         }
 
         try Task.checkCancellation()
+        // Preserve failure as a retryable/unavailable state, distinct from a valid empty result.
         throw AssistantServiceError.nearbyPlacesUnavailable
     }
 
