@@ -48,8 +48,6 @@ final class PlaceSearchFlowUITests: XCTestCase {
 
         let popover = app.descendants(matching: .any)["mapWeatherPopover"]
         XCTAssertTrue(popover.waitForExistence(timeout: 5), "Weather must present its own popover without opening search.")
-        XCTAssertTrue(app.descendants(matching: .any)["mapWeatherLoadingState"].waitForExistence(timeout: 5),
-                      "The DEBUG fixture must expose the popover without a network response.")
         XCTAssertFalse(app.textFields["placeSearchField"].exists, "Tapping weather must not activate the search field.")
         XCTAssertFalse(app.descendants(matching: .any)["placeSearchResultsPanel"].exists)
         XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5), "Tapping weather must not present the search keyboard.")

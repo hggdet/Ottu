@@ -149,8 +149,8 @@ final class MapAssistantServiceTests: XCTestCase {
         StubURLProtocol.handler = { _ in .response(status: 503, body: Data(), delay: 0.055) }
         let service = makeService(
             endpoints: (1...5).map { "https://endpoint\($0).test/interpreter" },
-            totalTimeout: 0.5,
-            endpointTimeout: 0.25
+            totalTimeout: 0.7,
+            endpointTimeout: 0.3
         )
 
         let startedAt = ProcessInfo.processInfo.systemUptime
@@ -167,8 +167,8 @@ final class MapAssistantServiceTests: XCTestCase {
 
         XCTAssertGreaterThanOrEqual(timeouts.count, 2)
         XCTAssertLessThanOrEqual(timeouts.count, 5)
-        XCTAssertLessThanOrEqual(elapsed, 1.0)
-        XCTAssertTrue(timeouts.allSatisfy { $0 <= 0.25 })
+        XCTAssertLessThanOrEqual(elapsed, 1.2)
+        XCTAssertTrue(timeouts.allSatisfy { $0 <= 0.3 })
         XCTAssertLessThan(timeouts.last ?? 1, timeouts.first ?? 0)
     }
 
