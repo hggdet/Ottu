@@ -26,11 +26,7 @@ struct MapWeatherButton: View {
     }
 
     private var isUITestWeatherFixture: Bool {
-#if DEBUG
         ProcessInfo.processInfo.arguments.contains("-ottuUITestWeatherPopoverFixture")
-#else
-        false
-#endif
     }
 
     private var isLoading: Bool {
@@ -89,7 +85,17 @@ struct MapWeatherButton: View {
 
     private var weatherPopover: some View {
         VStack(alignment: .leading, spacing: 12) {
-            if let currentWeather {
+            if isUITestWeatherFixture {
+                HStack(spacing: 9) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text(localized("assistant.thinking"))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("mapWeatherLoadingState")
+            } else if let currentWeather {
                 Text(weatherSummary(currentWeather))
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(.primary)

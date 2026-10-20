@@ -150,7 +150,7 @@ final class MapAssistantServiceTests: XCTestCase {
         let service = makeService(
             endpoints: (1...5).map { "https://endpoint\($0).test/interpreter" },
             totalTimeout: 0.5,
-            endpointTimeout: 0.2
+            endpointTimeout: 0.25
         )
 
         let startedAt = ProcessInfo.processInfo.systemUptime
@@ -168,7 +168,7 @@ final class MapAssistantServiceTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(timeouts.count, 2)
         XCTAssertLessThanOrEqual(timeouts.count, 5)
         XCTAssertLessThanOrEqual(elapsed, 1.0)
-        XCTAssertTrue(timeouts.allSatisfy { $0 <= 0.2 })
+        XCTAssertTrue(timeouts.allSatisfy { $0 <= 0.25 })
         XCTAssertLessThan(timeouts.last ?? 1, timeouts.first ?? 0)
     }
 
