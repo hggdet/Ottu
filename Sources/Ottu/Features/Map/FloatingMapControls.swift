@@ -22,7 +22,6 @@ struct FloatingMapControls: View {
             }
         }
         .accessibilityIdentifier("mapNavigationBar")
-        .accessibilityElement(children: .contain)
     }
 
     private func tabButton(for tab: MapNavigationTab) -> some View {

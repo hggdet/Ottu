@@ -119,7 +119,6 @@ struct MapWeatherButton: View {
         }
         .padding(16)
         .frame(minWidth: 210, maxWidth: 280, alignment: .leading)
-        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("mapWeatherPopover")
     }
 
