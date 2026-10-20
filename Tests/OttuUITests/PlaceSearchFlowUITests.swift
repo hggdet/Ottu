@@ -2,11 +2,11 @@ import XCTest
 
 @MainActor
 final class PlaceSearchFlowUITests: XCTestCase {
-    func testCircularSearchButtonOpensAndReopensArabicSearchField() {
+    func testFullWidthSearchButtonOpensAndReopensArabicSearchField() {
         verifySearchInteraction(language: "ar", locale: "ar_IQ")
     }
 
-    func testCircularSearchButtonOpensAndReopensEnglishSearchField() {
+    func testFullWidthSearchButtonOpensAndReopensEnglishSearchField() {
         verifySearchInteraction(language: "en", locale: "en_US")
     }
 
@@ -15,19 +15,44 @@ final class PlaceSearchFlowUITests: XCTestCase {
         verifySearchSelection(language: "en", locale: "en_US")
     }
 
-    func testFuelQuickCategoryRetriesAndClosesInArabicAndEnglish() {
-        verifyFuelQuickCategoryRetry(language: "ar", locale: "ar_IQ")
-        verifyFuelQuickCategoryRetry(language: "en", locale: "en_US")
+    func testSearchDismissesBeforeAssistantSheetInArabicAndEnglish() {
+        verifyAssistantSheetTransition(language: "ar", locale: "ar_IQ")
+        verifyAssistantSheetTransition(language: "en", locale: "en_US")
     }
 
-    func testFuelQuickCategoryClosesDirectlyFromErrorInArabicAndEnglish() {
-        verifyFuelQuickCategoryRetry(language: "ar", locale: "ar_IQ", closeOnError: true)
-        verifyFuelQuickCategoryRetry(language: "en", locale: "en_US", closeOnError: true)
+    func testWeatherPopoverDoesNotOpenSearchInArabicAndEnglish() {
+        verifyWeatherPopoverIndependence(language: "ar", locale: "ar_IQ")
+        verifyWeatherPopoverIndependence(language: "en", locale: "en_US")
     }
 
-    func testSearchDismissesBeforeCategoryAndAssistantSheetsInArabicAndEnglish() {
-        verifyOtherSheetTransitions(language: "ar", locale: "ar_IQ")
-        verifyOtherSheetTransitions(language: "en", locale: "en_US")
+    private func verifyWeatherPopoverIndependence(language: String, locale: String) {
+        continueAfterFailure = false
+        let app = launchMap(
+            language: language,
+            locale: locale,
+            extraArguments: ["-ottuUITestWeatherPopoverFixture"]
+        )
+        defer { app.terminate() }
+
+        let searchButton = app.buttons["placeSearchButton"]
+        let weatherButton = app.buttons["mapWeatherButton"]
+        XCTAssertTrue(searchButton.waitForExistence(timeout: 15))
+        XCTAssertTrue(weatherButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(weatherButton.isHittable)
+        assertClosedSearchGeometry(in: app)
+        let overlap = searchButton.frame.intersection(weatherButton.frame)
+        XCTAssertTrue(overlap.isNull || overlap.width < 0.001 || overlap.height < 0.001,
+                      "Search and weather must have independent, non-overlapping touch areas in both layout directions.")
+        XCTAssertFalse(app.textFields["placeSearchField"].exists)
+        weatherButton.tap()
+
+        let popover = app.descendants(matching: .any)["mapWeatherPopover"]
+        XCTAssertTrue(popover.waitForExistence(timeout: 5), "Weather must present its own popover without opening search.")
+        XCTAssertTrue(app.descendants(matching: .any)["mapWeatherLoadingState"].waitForExistence(timeout: 5),
+                      "The DEBUG fixture must expose the popover without a network response.")
+        XCTAssertFalse(app.textFields["placeSearchField"].exists, "Tapping weather must not activate the search field.")
+        XCTAssertFalse(app.descendants(matching: .any)["placeSearchResultsPanel"].exists)
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5), "Tapping weather must not present the search keyboard.")
     }
 
     private func verifySearchInteraction(language: String, locale: String) {
@@ -37,20 +62,26 @@ final class PlaceSearchFlowUITests: XCTestCase {
         let app = launchMap(language: language, locale: locale)
         defer { app.terminate() }
 
+        assertCategoryUIAbsent(in: app)
         let searchButton = app.buttons["placeSearchButton"]
-        XCTAssertTrue(searchButton.waitForExistence(timeout: 15), "The circular place-search control should be present on the map.")
-        XCTAssertTrue(searchButton.isHittable, "The circular place-search control should receive physical taps.")
-        XCTAssertGreaterThanOrEqual(searchButton.frame.width, 44 - hitTargetTolerance)
+        XCTAssertTrue(searchButton.waitForExistence(timeout: 15), "The full-width place-search control should be present on the map.")
+        XCTAssertTrue(searchButton.isHittable, "The full-width place-search control should receive physical taps.")
+        assertClosedSearchGeometry(in: app)
         XCTAssertGreaterThanOrEqual(searchButton.frame.height, 44 - hitTargetTolerance)
         searchButton.tap()
 
         let searchField = app.textFields["placeSearchField"]
-        XCTAssertTrue(searchField.waitForExistence(timeout: 5), "Tapping the circle must reveal the actual text field.")
+        XCTAssertTrue(searchField.waitForExistence(timeout: 5), "Tapping the closed search capsule must reveal the actual text field.")
         XCTAssertTrue(searchField.isHittable)
-        XCTAssertTrue(searchButton.waitForNonExistence(timeout: 5), "The closed-state magnifier must not remain after opening.")
+        XCTAssertTrue(searchButton.waitForNonExistence(timeout: 5), "The closed-state search button must not remain after opening.")
+        assertOpenSearchGeometry(in: app, minimumHeight: 44 - hitTargetTolerance)
         XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5), "Opening search must focus the field and show the keyboard without another tap.")
+        assertCategoryUIAbsent(in: app)
         searchField.typeText("Baghdad")
         XCTAssertEqual(searchField.value as? String, "Baghdad", "The field must accept text, not only appear visually.")
+        assertOpenSearchGeometry(in: app, minimumHeight: 44 - hitTargetTolerance)
+        assertCompactResultsPanelIfPresent(in: app)
+        assertCategoryUIAbsent(in: app)
 
         let closeButton = app.buttons["placeSearchClose"]
         XCTAssertTrue(closeButton.isHittable)
@@ -63,27 +94,40 @@ final class PlaceSearchFlowUITests: XCTestCase {
         XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5))
         XCTAssertTrue(searchButton.waitForExistence(timeout: 5))
         XCTAssertTrue(searchButton.isHittable)
+        assertClosedSearchGeometry(in: app)
+        XCTAssertGreaterThanOrEqual(searchButton.frame.height, 44 - hitTargetTolerance)
+        assertCategoryUIAbsent(in: app)
         searchButton.tap()
         XCTAssertTrue(searchField.waitForExistence(timeout: 5), "A second physical tap must reopen search after closing it.")
         XCTAssertTrue(searchField.isHittable)
+        assertOpenSearchGeometry(in: app, minimumHeight: 44 - hitTargetTolerance)
         XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
         XCTAssertNotEqual(searchField.value as? String, "Baghdad", "Closing search must clear the previous query.")
+        assertCategoryUIAbsent(in: app)
         searchField.typeText("Basra")
         XCTAssertEqual(searchField.value as? String, "Basra", "The reopened field must accept a fresh query.")
+        assertOpenSearchGeometry(in: app, minimumHeight: 44 - hitTargetTolerance)
+        assertCompactResultsPanelIfPresent(in: app)
+        assertCategoryUIAbsent(in: app)
 
         let clearButton = app.buttons["placeSearchClear"]
         XCTAssertTrue(clearButton.isHittable)
+        XCTAssertGreaterThanOrEqual(clearButton.frame.width, 44 - hitTargetTolerance)
+        XCTAssertGreaterThanOrEqual(clearButton.frame.height, 44 - hitTargetTolerance)
         clearButton.coordinate(withNormalizedOffset: CGVector(dx: 0.15, dy: 0.5)).tap()
         XCTAssertTrue(clearButton.waitForNonExistence(timeout: 5))
         XCTAssertTrue(searchField.exists, "Clear must keep search open.")
         XCTAssertNotEqual(searchField.value as? String, "Basra")
         XCTAssertTrue(app.keyboards.firstMatch.exists, "Clear must retain input focus.")
+        assertCategoryUIAbsent(in: app)
         searchField.typeText("Erbil")
         XCTAssertEqual(searchField.value as? String, "Erbil")
+        assertCompactResultsPanelIfPresent(in: app)
         closeButton.tap()
         XCTAssertTrue(searchField.waitForNonExistence(timeout: 5), "Close must also work after clearing and typing again.")
         XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5))
         XCTAssertTrue(searchButton.waitForExistence(timeout: 5))
+        assertCategoryUIAbsent(in: app)
     }
 
     private func verifySearchSelection(language: String, locale: String) {
@@ -95,12 +139,17 @@ final class PlaceSearchFlowUITests: XCTestCase {
         )
         defer { app.terminate() }
 
+        assertCategoryUIAbsent(in: app)
         let searchButton = app.buttons["placeSearchButton"]
         XCTAssertTrue(searchButton.waitForExistence(timeout: 15))
+        assertClosedSearchGeometry(in: app)
         searchButton.tap()
         let searchField = app.textFields["placeSearchField"]
         XCTAssertTrue(searchField.waitForExistence(timeout: 5))
         XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
+        assertOpenSearchGeometry(in: app, minimumHeight: 44 - 0.001)
+        assertCompactResultsPanelIfPresent(in: app)
+        assertCategoryUIAbsent(in: app)
 
         let fixturePlace = app.buttons.matching(NSPredicate(
             format: "label CONTAINS %@", "UI Test Selection Place"
@@ -114,66 +163,10 @@ final class PlaceSearchFlowUITests: XCTestCase {
         ]
         XCTAssertTrue(displayedPlace.waitForExistence(timeout: 5), "Selecting a result must focus and display that place on the map.")
         XCTAssertTrue(app.staticTexts["UI Test Selection Place"].exists, "The displayed place sheet must show the selected fixture place.")
+        assertCategoryUIAbsent(in: app)
     }
 
-    private func verifyFuelQuickCategoryRetry(language: String, locale: String, closeOnError: Bool = false) {
-        continueAfterFailure = false
-        let app = launchMap(
-            language: language,
-            locale: locale,
-            extraArguments: ["-ottuUITestNearbySearchFixture"]
-        )
-        defer { app.terminate() }
-
-        let searchButton = app.buttons["placeSearchButton"]
-        XCTAssertTrue(searchButton.waitForExistence(timeout: 15))
-        searchButton.tap()
-        XCTAssertTrue(app.textFields["placeSearchField"].waitForExistence(timeout: 5))
-
-        // This deliberately exercises the map's quick chip, not the categories tab.
-        let fuelChip = app.buttons["mapQuickCategory.fuel"]
-        XCTAssertTrue(fuelChip.waitForExistence(timeout: 5), "The fuel quick-category chip should be available from focused map search.")
-        XCTAssertTrue(fuelChip.isHittable)
-        fuelChip.tap()
-        XCTAssertTrue(app.textFields["placeSearchField"].waitForNonExistence(timeout: 5))
-        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5), "Selecting the fuel quick category must dismiss the search keyboard before showing its results panel.")
-
-        let panel = app.descendants(matching: .any)["mapCategoryResultsPanel"]
-        XCTAssertTrue(panel.waitForExistence(timeout: 5), "Selecting fuel must present the nearby-results panel.")
-        let loadingState = app.buttons["mapCategoryResultsState.loading"]
-        XCTAssertTrue(loadingState.waitForExistence(timeout: 5), "The DEBUG fixture holds its first response until this test explicitly releases it.")
-        XCTAssertTrue(loadingState.isHittable)
-        XCTAssertEqual(panel.value as? String, "loading")
-        // Only this DEBUG fixture renders the unchanged loading label as a button
-        // to signal a provider response. No wall-clock delay or live API is involved.
-        loadingState.tap()
-
-        let errorState = app.descendants(matching: .any)["mapCategoryResultsState.error"]
-        XCTAssertTrue(errorState.waitForExistence(timeout: 5), "The first fixture request should transition to the retryable unavailable state.")
-        XCTAssertEqual(panel.value as? String, "error")
-        let retryButton = app.buttons["mapCategoryResultsRetry"]
-        XCTAssertTrue(retryButton.exists)
-        if closeOnError {
-            // Reproduce the reported stuck-on-failure case without retrying or
-            // allowing the fixture to advance to empty/results first.
-            let closeButton = app.buttons["mapCategoryResultsClose"]
-            XCTAssertTrue(closeButton.isHittable)
-            closeButton.tap()
-            XCTAssertTrue(panel.waitForNonExistence(timeout: 5), "Close must dismiss the category panel directly from its error state.")
-            XCTAssertTrue(errorState.waitForNonExistence(timeout: 5), "Closing must remove the failure UI, not only hide its text.")
-            XCTAssertTrue(retryButton.waitForNonExistence(timeout: 5))
-            return
-        }
-        retryButton.tap()
-
-        let emptyState = app.descendants(matching: .any)["mapCategoryResultsState.empty"]
-        XCTAssertTrue(emptyState.waitForExistence(timeout: 5), "Retry should return the fixture's deterministic empty result.")
-        XCTAssertEqual(panel.value as? String, "empty")
-        app.buttons["mapCategoryResultsClose"].tap()
-        XCTAssertTrue(panel.waitForNonExistence(timeout: 5), "Closing the category results must dismiss the panel.")
-    }
-
-    private func verifyOtherSheetTransitions(language: String, locale: String) {
+    private func verifyAssistantSheetTransition(language: String, locale: String) {
         continueAfterFailure = false
         let app = launchMap(language: language, locale: locale)
         defer { app.terminate() }
@@ -184,25 +177,44 @@ final class PlaceSearchFlowUITests: XCTestCase {
         let searchField = app.textFields["placeSearchField"]
         XCTAssertTrue(searchField.waitForExistence(timeout: 5))
         XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
+        assertCategoryUIAbsent(in: app)
 
-        app.buttons["mapTab.categories"].tap()
-        XCTAssertTrue(searchField.waitForNonExistence(timeout: 5), "Opening categories must close map search.")
-        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5), "Opening categories must dismiss the search keyboard.")
-        let categoryNavigationBar = app.navigationBars.firstMatch
-        XCTAssertTrue(categoryNavigationBar.waitForExistence(timeout: 5), "The categories sheet should be presented.")
-        let doneButton = categoryNavigationBar.buttons.firstMatch
-        XCTAssertTrue(doneButton.exists, "The categories sheet should expose its Done control.")
-        doneButton.tap()
-        XCTAssertTrue(categoryNavigationBar.waitForNonExistence(timeout: 5))
-
-        XCTAssertTrue(searchButton.waitForExistence(timeout: 5))
-        searchButton.tap()
-        XCTAssertTrue(searchField.waitForExistence(timeout: 5))
-        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
         app.buttons["mapTab.assistant"].tap()
         XCTAssertTrue(searchField.waitForNonExistence(timeout: 5), "Opening assistant must close map search.")
         XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5), "Opening assistant must dismiss the search keyboard.")
         XCTAssertTrue(app.navigationBars.firstMatch.waitForExistence(timeout: 5), "The assistant sheet should be presented.")
+    }
+
+    private func assertClosedSearchGeometry(in app: XCUIApplication) {
+        let control = app.descendants(matching: .any)["placeSearchClosedControl"]
+        XCTAssertTrue(control.exists, "The closed full-width bar should expose a container with independent search and weather buttons.")
+        XCTAssertGreaterThanOrEqual(control.frame.width, app.frame.width * 0.8, "The shared search bar must remain full width.")
+        XCTAssertGreaterThanOrEqual(control.frame.height, 44 - 0.001)
+        XCTAssertGreaterThanOrEqual(app.buttons["placeSearchButton"].frame.width, 44 - 0.001)
+        XCTAssertGreaterThanOrEqual(app.buttons["placeSearchButton"].frame.width, app.frame.width * 0.7, "The search hit area itself must keep most of the shared bar width.")
+    }
+
+    private func assertOpenSearchGeometry(in app: XCUIApplication, minimumHeight: CGFloat) {
+        let control = app.descendants(matching: .any)["placeSearchControl"]
+        XCTAssertTrue(control.exists, "The open search controls should expose their shared container.")
+        XCTAssertGreaterThanOrEqual(control.frame.width, app.frame.width * 0.8, "Open search should span at least 80% of the viewport.")
+        XCTAssertGreaterThanOrEqual(control.frame.height, minimumHeight, "Open search must retain a minimum 44pt touch target.")
+    }
+
+    private func assertCompactResultsPanelIfPresent(in app: XCUIApplication) {
+        let panel = app.descendants(matching: .any)["placeSearchResultsPanel"]
+        XCTAssertTrue(panel.waitForExistence(timeout: 5), "Focused search should show its single suggestions/results panel.")
+        let maximumHeight = min(300, app.frame.height * 0.35)
+        XCTAssertLessThanOrEqual(panel.frame.height, maximumHeight + 1, "The single search suggestions/results panel must stay compact.")
+    }
+
+    private func assertCategoryUIAbsent(in app: XCUIApplication) {
+        XCTAssertFalse(app.buttons["mapTab.categories"].exists, "The categories navigation tab must be removed.")
+        let quickCategoryButtons = app.buttons.matching(NSPredicate(
+            format: "identifier BEGINSWITH %@", "mapQuickCategory."
+        ))
+        XCTAssertEqual(quickCategoryButtons.count, 0, "Map search must not expose quick-category chips.")
+        XCTAssertFalse(app.descendants(matching: .any)["mapCategoryResultsPanel"].exists, "The separate category results panel must be removed.")
     }
 
     private func launchMap(

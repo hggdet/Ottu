@@ -62,6 +62,7 @@ struct MapWeatherButton: View {
         .buttonStyle(.plain)
         .glassEffect(.clear.interactive(), in: Capsule())
         .accessibilityLabel(accessibilityLabel)
+        .accessibilityIdentifier("mapWeatherButton")
         .popover(isPresented: $isPopoverPresented, arrowEdge: .top) {
             weatherPopover
                 .presentationCompactAdaptation(.popover)
@@ -103,10 +104,14 @@ struct MapWeatherButton: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("mapWeatherLoadingState")
             }
         }
         .padding(16)
         .frame(minWidth: 210, maxWidth: 280, alignment: .leading)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("mapWeatherPopover")
     }
 
     private var accessibilityLabel: String {
@@ -126,6 +131,13 @@ struct MapWeatherButton: View {
         weatherLocationID = nil
         failedLocationID = nil
 
+#if DEBUG
+        // Keep the popover in a stable loading state for the interaction test.
+        // No provider request or timer is involved, and Release ignores this flag.
+        if ProcessInfo.processInfo.arguments.contains("-ottuUITestWeatherPopoverFixture") {
+            return
+        }
+#endif
         do {
             let result = try await assistantService.weather(at: coordinate)
             guard !Task.isCancelled, activeLocationID == locationID else { return }

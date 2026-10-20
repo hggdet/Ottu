@@ -3,7 +3,6 @@ import SwiftUI
 enum MapNavigationTab: String, CaseIterable, Identifiable {
     case location
     case assistant
-    case categories
     case settings
 
     var id: String { rawValue }
@@ -12,7 +11,6 @@ enum MapNavigationTab: String, CaseIterable, Identifiable {
         switch self {
         case .location: "navigation.location"
         case .assistant: "navigation.assistant"
-        case .categories: "navigation.categories"
         case .settings: "navigation.settings"
         }
     }
@@ -21,7 +19,6 @@ enum MapNavigationTab: String, CaseIterable, Identifiable {
         switch self {
         case .location: "FlaticonLocationPin"
         case .assistant: "FlaticonAssistantOutline"
-        case .categories: "IconlyCategory"
         case .settings: "FlaticonSettings"
         }
     }
@@ -31,7 +28,7 @@ enum MapNavigationTab: String, CaseIterable, Identifiable {
         switch self {
         case .location: 22
         case .assistant: 20
-        case .categories, .settings: 24
+        case .settings: 24
         }
     }
 }

@@ -5,7 +5,7 @@ final class NavigationTests: XCTestCase {
     func testNavigationTabsKeepRequestedRightToLeftOrder() {
         XCTAssertEqual(
             MapNavigationTab.allCases.map(\.rawValue),
-            ["location", "assistant", "categories", "settings"]
+            ["location", "assistant", "settings"]
         )
     }
 

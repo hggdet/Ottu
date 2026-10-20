@@ -18,7 +18,6 @@ struct MapHomeView: View {
     @State private var results: [Place] = []
     @State private var isSearchOpen = false
     @State private var sessionSearchSuggestions: [Place] = []
-    @State private var isSearchExpanded = false
     @State private var activeSheet: HomeSheet?
 #if DEBUG
     @State private var isSettingsPresented = ProcessInfo.processInfo.arguments.contains("-ottuReviewMapSettings")
@@ -27,8 +26,6 @@ struct MapHomeView: View {
 #endif
     @State private var placeToShowAfterSettings: Place?
     @State private var focusedPlace: Place?
-    @State private var selectedQuickCategory: AssistantPlaceCategory?
-    @StateObject private var nearbySearch = MapHomeView.makeNearbySearchController()
     @State private var routePlan: RoutePlan?
     @State private var routeAlternatives: [RoutePlan] = []
     @State private var routeTarget: Place?
@@ -86,39 +83,6 @@ struct MapHomeView: View {
     private let searchService: any PlaceSearchProviding = PhotonPlaceSearchService()
     private let assistantService: any MapAssistantProviding = OpenStreetMapAssistantService()
     private let routeService: any RoutingProviding = OSRMRouteService()
-
-    private let quickCategories: [AssistantPlaceCategory] = [.restaurant, .cafe, .fuel, .pharmacy]
-
-    private var nearbyResults: [Place] {
-        if case .results(let places) = nearbySearch.state { return places }
-        return []
-    }
-
-    private var isSearchingNearby: Bool { nearbySearch.state == .loading }
-
-    private var nearbySearchError: String? {
-        guard nearbySearch.state == .unavailable else { return nil }
-        return AppLocalization.string("assistant.nearby_unavailable", locale: locale)
-    }
-
-    private var nearbySearchAccessibilityState: String {
-        switch nearbySearch.state {
-        case .idle: "idle"
-        case .loading: "loading"
-        case .results: "results"
-        case .empty: "empty"
-        case .unavailable: "error"
-        }
-    }
-
-    private static func makeNearbySearchController() -> NearbySearchController {
-#if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("-ottuUITestNearbySearchFixture") {
-            return NearbySearchController(service: NearbySearchUITestFixtureService())
-        }
-#endif
-        return NearbySearchController(service: OpenStreetMapAssistantService())
-    }
 
     private var currentLanguage: String {
         AppLocalization.languageCode(for: locale)
@@ -319,7 +283,7 @@ struct MapHomeView: View {
                             if showsLocationExplanation, locationManager.authorizationStatus == .notDetermined {
                                 locationExplanationBanner
                             }
-                            searchPanel(maxResultsHeight: max(180, geometry.size.height - 180))
+                            searchPanel(maxResultsHeight: min(280, max(96, geometry.size.height * 0.30)))
                         }
                     }
                 }
@@ -432,20 +396,14 @@ struct MapHomeView: View {
             spokenGuidanceIDs.removeAll()
             updateVoiceGuidance()
         }
-        .onChange(of: query) { _, newQuery in
-            guard !newQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-                  selectedQuickCategory != nil else { return }
-            clearNearbySearch()
-        }
         .onChange(of: activeSheet?.id) { _, newSheetID in
             if newSheetID != nil { dismissSearch() }
         }
         .onChange(of: isSettingsPresented) { _, isPresented in
             if isPresented { dismissSearch() }
         }
-        .onDisappear { clearNearbySearch() }
         .sheet(item: $activeSheet, onDismiss: {
-            if selectedTab == .assistant || selectedTab == .categories { selectedTab = .location }
+            if selectedTab == .assistant { selectedTab = .location }
         }) { sheet in
             sheetContent(for: sheet)
                 .presentationDetents([.medium, .large])
@@ -582,115 +540,109 @@ struct MapHomeView: View {
     }
 
     private func searchPanel(maxResultsHeight: CGFloat) -> some View {
-        VStack(spacing: 8) {
-            HStack(spacing: 10) {
-                MapWeatherButton(
-                    coordinate: locationManager.coordinate ?? mapCenter,
-                    locale: locale,
-                    assistantService: assistantService
-                )
-                if isSearchOpen {
-                    HStack(spacing: 10) {
+        VStack(spacing: 4) {
+            if isSearchOpen {
+                HStack(spacing: 6) {
+                    Button {
+                        dismissSearch()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .foregroundStyle(.secondary)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(Text(AppLocalization.string("common.close", locale: locale)))
+                    .accessibilityIdentifier("placeSearchClose")
+                    TextField(AppLocalization.string("search.placeholder", locale: locale), text: $query)
+                        .focused($searchFocused)
+                        .textFieldStyle(.plain)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .submitLabel(.search)
+                        .onSubmit { searchFocused = false }
+                        .task {
+                            await Task.yield()
+                            guard !Task.isCancelled, isSearchOpen,
+                                  activeSheet == nil, !isSettingsPresented else { return }
+                            searchFocused = true
+                        }
+                        .accessibilityIdentifier("placeSearchField")
+                    if isSearching {
+                        ProgressView().controlSize(.small)
+                    }
+                    if !query.isEmpty {
                         Button {
-                            dismissSearch()
+                            query = ""
+                            searchErrorMessage = nil
+                            searchFocused = true
                         } label: {
-                            Image(systemName: "xmark")
+                            Image(systemName: "xmark.circle.fill")
                                 .foregroundStyle(.secondary)
                                 .frame(width: 44, height: 44)
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
-                        .accessibilityLabel(Text(AppLocalization.string("common.close", locale: locale)))
-                        .accessibilityIdentifier("placeSearchClose")
-                        TextField(AppLocalization.string("search.placeholder", locale: locale), text: $query)
-                            .focused($searchFocused)
-                            .textFieldStyle(.plain)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-                            .submitLabel(.search)
-                            .onSubmit { searchFocused = false }
-                            .task {
-                                // Focus only after the inserted field has mounted. The task
-                                // is cancelled when closing removes it from the hierarchy.
-                                await Task.yield()
-                                guard !Task.isCancelled, isSearchOpen,
-                                      activeSheet == nil, !isSettingsPresented else { return }
-                                searchFocused = true
-                            }
-                            .accessibilityIdentifier("placeSearchField")
-                        if isSearching {
-                            ProgressView().controlSize(.small)
-                        }
-                        if !query.isEmpty {
-                            Button {
-                                query = ""
-                                searchErrorMessage = nil
-                                isSearchExpanded = false
-                                searchFocused = true
-                            } label: {
-                                Image(systemName: "xmark.circle.fill")
-                                    .foregroundStyle(.secondary)
-                                    .frame(width: 44, height: 44)
-                                    .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel(Text(AppLocalization.string("search.clear", locale: locale)))
-                            .accessibilityIdentifier("placeSearchClear")
-                        }
+                        .accessibilityLabel(Text(AppLocalization.string("search.clear", locale: locale)))
+                        .accessibilityIdentifier("placeSearchClear")
                     }
-                    .padding(.horizontal, 12)
-                    .frame(height: 48)
-                    .background {
-                        Capsule()
-                            .fill(.clear)
-                            .glassEffect(.regular, in: Capsule())
-                            .allowsHitTesting(false)
-                    }
-                    .transition(.opacity)
                 }
-                if !isSearchOpen {
+                .padding(.horizontal, 8)
+                .frame(maxWidth: .infinity)
+                .frame(height: 44)
+                .background {
+                    Capsule()
+                        .fill(.clear)
+                        .glassEffect(.regular.interactive(), in: Capsule())
+                        .allowsHitTesting(false)
+                }
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("placeSearchControl")
+                .transition(.opacity)
+            } else {
+                HStack(spacing: 0) {
                     Button {
                         isSearchOpen = true
                     } label: {
-                        Image(systemName: "magnifyingglass")
-                            .font(.body.weight(.medium))
-                            .frame(width: 48, height: 48)
-                            .contentShape(Circle())
+                        HStack(spacing: 10) {
+                            Image(systemName: "magnifyingglass")
+                                .font(.body.weight(.medium))
+                            AppLocalizedText("search.placeholder", locale: locale)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                            Spacer(minLength: 0)
+                        }
+                        .padding(.leading, 14)
+                        .padding(.trailing, 8)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 44)
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    .glassEffect(.regular.interactive(), in: Circle())
-                    .contentShape(Circle())
                     .accessibilityLabel(Text(AppLocalization.string("search.placeholder", locale: locale)))
                     .accessibilityIdentifier("placeSearchButton")
-                    .transition(.opacity)
+                    MapWeatherButton(
+                        coordinate: locationManager.coordinate ?? mapCenter,
+                        locale: locale,
+                        assistantService: assistantService
+                    )
                 }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 6)
-            if searchFocused, query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                quickPlacesRow
-                    .transition(.opacity)
-            }
-            if searchFocused, !isMapMoving, !isRouting {
-                quickCategoryChips
-                    .transition(.opacity)
-            }
-            if selectedQuickCategory != nil {
-                nearbyResultsPanel(maxHeight: maxResultsHeight)
-                    .transition(reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))
+                .frame(maxWidth: .infinity)
+                .frame(height: 44)
+                .glassEffect(.regular.interactive(), in: Capsule())
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("placeSearchClosedControl")
+                .transition(.opacity)
             }
             if isSearchOpen {
                 resultsPanel(maxHeight: maxResultsHeight)
                     .transition(reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))
             }
         }
+        .frame(maxWidth: .infinity)
         .animation(reduceMotion ? nil : .spring(response: 0.36, dampingFraction: 0.88), value: isSearchOpen)
         .animation(reduceMotion ? nil : .spring(response: 0.3, dampingFraction: 0.9), value: filteredSearchSuggestions.map(\.id))
-        .animation(reduceMotion ? nil : .spring(response: 0.36, dampingFraction: 0.88), value: isSearchExpanded)
-        .animation(reduceMotion ? nil : .spring(response: 0.36, dampingFraction: 0.88), value: !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-        .animation(reduceMotion ? nil : .easeInOut(duration: 0.24), value: isMapMoving)
-        .animation(reduceMotion ? nil : .easeInOut(duration: 0.24), value: isRouting)
-        .animation(reduceMotion ? nil : .easeInOut(duration: 0.24), value: searchFocused)
         .zIndex(10)
     }
 
@@ -714,77 +666,6 @@ struct MapHomeView: View {
         .accessibilityElement(children: .combine)
         .transition(.move(edge: .top).combined(with: .opacity))
         .animation(.easeInOut(duration: 0.2), value: networkMonitor.isConnected)
-    }
-
-    private func recentPlacesPanel(maxHeight: CGFloat) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 8) {
-                Image(systemName: "clock.arrow.circlepath")
-                    .foregroundStyle(.secondary)
-                AppLocalizedText("search.recent", locale: locale)
-                    .font(.subheadline.weight(.semibold))
-                Spacer()
-                Button {
-                    localStore.clearRecentPlaces()
-                } label: {
-                    HStack(spacing: 5) {
-                        Image(systemName: "trash")
-                        AppLocalizedText("search.clear_history", locale: locale)
-                    }
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(.red)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(Text(AppLocalization.string("search.clear_history", locale: locale)))
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 11)
-
-            Divider()
-
-            ScrollView(.vertical) {
-                LazyVStack(spacing: 0) {
-                    ForEach(Array(localStore.recentPlaces.prefix(10))) { place in
-                        Button {
-                            selectPlace(place)
-                        } label: {
-                            HStack(spacing: 10) {
-                                Image(systemName: "mappin")
-                                    .font(.subheadline.weight(.medium))
-                                    .foregroundStyle(.secondary)
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text(place.name)
-                                        .font(.body.weight(.medium))
-                                        .foregroundStyle(.primary)
-                                    if !place.subtitle.isEmpty {
-                                        Text(place.subtitle)
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
-                                            .lineLimit(1)
-                                    }
-                                }
-                                Spacer(minLength: 0)
-                                Image(systemName: "arrow.up.left")
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(.tertiary)
-                            }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 9)
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        if place.id != localStore.recentPlaces.prefix(10).last?.id {
-                            Divider().padding(.leading, 16)
-                        }
-                    }
-                }
-            }
-            .scrollIndicators(.visible)
-            .scrollBounceBehavior(.basedOnSize)
-            .frame(maxHeight: min(maxHeight, 280))
-        }
-        .frame(maxWidth: .infinity)
-        .mapGlassSurface(cornerRadius: 24, glassIntensity: liquidGlassIntensity)
     }
 
     private var quickPlacesRow: some View {
@@ -835,202 +716,11 @@ struct MapHomeView: View {
         .scrollIndicators(.hidden)
     }
 
-    private var quickCategoryChips: some View {
-        ScrollView(.horizontal) {
-            HStack(spacing: 8) {
-                ForEach(quickCategories) { category in
-                    let isSelected = selectedQuickCategory == category
-                    Button {
-                        searchNearbyPlaces(for: category)
-                    } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: categorySymbol(for: category))
-                                .font(.system(size: 11, weight: .semibold))
-                            AppLocalizedText(category.titleKey, locale: locale)
-                                .font(.system(size: 11, weight: .semibold))
-                                .lineLimit(1)
-                        }
-                        .foregroundStyle(Color.primary)
-                        .padding(.horizontal, 10)
-                        .frame(height: 34)
-                        .mapGlassSurface(cornerRadius: 17, glassIntensity: liquidGlassIntensity)
-                        .overlay {
-                            Capsule()
-                                .strokeBorder(isSelected ? Color.secondary.opacity(0.55) : Color.clear, lineWidth: 1)
-                                .allowsHitTesting(false)
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(Text(AppLocalization.string(category.titleKey, locale: locale)))
-                    .accessibilityIdentifier("mapQuickCategory.\(category.rawValue)")
-                    .accessibilityAddTraits(isSelected ? .isSelected : [])
-                }
-            }
-            .padding(.vertical, 0)
-        }
-        .frame(height: 34)
-        .scrollIndicators(.hidden)
-        .animation(reduceMotion ? nil : .spring(response: 0.32, dampingFraction: 0.82), value: selectedQuickCategory)
-    }
-
-    private func categorySymbol(for category: AssistantPlaceCategory) -> String {
-        switch category {
-        case .restaurant: "fork.knife"
-        case .cafe: "cup.and.saucer"
-        case .fuel: "fuelpump"
-        case .pharmacy: "cross.case"
-        case .hospital: "cross"
-        case .hotel: "bed.double"
-        case .park: "tree"
-        case .market: "basket"
-        }
-    }
-
-    private func nearbyResultsPanel(maxHeight: CGFloat) -> some View {
-        VStack(spacing: 0) {
-            if let selectedQuickCategory {
-                HStack {
-                    AppLocalizedText(selectedQuickCategory.titleKey, locale: locale)
-                        .font(.subheadline.weight(.semibold))
-                    Spacer()
-                    if isSearchingNearby { ProgressView().controlSize(.small) }
-                    Button(action: clearNearbySearch) {
-                        Image(systemName: "xmark")
-                            .foregroundStyle(.secondary)
-                            .frame(width: 44, height: 44)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(Text(AppLocalization.string("common.close", locale: locale)))
-                    .accessibilityIdentifier("mapCategoryResultsClose")
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 11)
-                Divider()
-            }
-
-            if isSearchingNearby {
-                HStack(spacing: 9) {
-                    ProgressView().controlSize(.small)
-#if DEBUG
-                    if ProcessInfo.processInfo.arguments.contains("-ottuUITestNearbySearchFixture") {
-                        Button {
-                            Task { await NearbySearchUITestFailureGate.shared.release() }
-                        } label: {
-                            AppLocalizedText("map.category.loading", locale: locale)
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier("mapCategoryResultsState.loading")
-                    } else {
-                        AppLocalizedText("map.category.loading", locale: locale)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .accessibilityIdentifier("mapCategoryResultsState.loading")
-                    }
-#else
-                    AppLocalizedText("map.category.loading", locale: locale)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .accessibilityIdentifier("mapCategoryResultsState.loading")
-#endif
-                    Spacer()
-                }
-                .padding(15)
-            } else if let nearbySearchError {
-                HStack(alignment: .top, spacing: 9) {
-                    Image(systemName: "exclamationmark.triangle")
-                        .foregroundStyle(.orange)
-                    Text(nearbySearchError)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityIdentifier("mapCategoryResultsState.error")
-                    Button {
-                        nearbySearch.retry()
-                    } label: {
-                        Image(systemName: "arrow.clockwise")
-                    }
-                    .accessibilityLabel(Text(AppLocalization.string("search.retry", locale: locale)))
-                    .accessibilityIdentifier("mapCategoryResultsRetry")
-                }
-                .padding(14)
-            } else if nearbyResults.isEmpty {
-                AppLocalizedText("map.category.empty", locale: locale)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(15)
-                    .accessibilityIdentifier("mapCategoryResultsState.empty")
-            } else {
-                ForEach(nearbyResults) { place in
-                    Button {
-                        selectPlace(place)
-                    } label: {
-                        HStack(spacing: 10) {
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(place.name)
-                                    .font(.subheadline.weight(.medium))
-                                    .foregroundStyle(.primary)
-                                if !place.subtitle.isEmpty {
-                                    Text(place.subtitle)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                        .lineLimit(1)
-                                }
-                            }
-                            Spacer(minLength: 0)
-                            Image(systemName: "chevron.forward")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.tertiary)
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 10)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    if place.id != nearbyResults.last?.id {
-                        Divider().padding(.leading, 16)
-                    }
-                }
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .frame(maxHeight: maxHeight)
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("mapCategoryResultsPanel")
-        .accessibilityValue(nearbySearchAccessibilityState)
-    }
-
-    private func searchNearbyPlaces(for category: AssistantPlaceCategory) {
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        dismissSearch()
-        results = []
-        focusedPlace = nil
-        routePreviewTask?.cancel()
-        routePreviewPlan = nil
-        routePreviewPlaceID = nil
-        isPreviewingRoute = false
-        routePreviewUnavailable = false
-        selectedQuickCategory = category
-        nearbySearch.cancel()
-        let origin = locationManager.coordinate ?? mapCenter
-        nearbySearch.search(for: category, near: origin, language: currentLanguage)
-    }
-
-    private func clearNearbySearch() {
-        nearbySearch.cancel()
-        selectedQuickCategory = nil
-    }
-
     private func dismissSearch() {
         searchFocused = false
         isSearchOpen = false
         query = ""
         searchErrorMessage = nil
-        isSearchExpanded = false
     }
 
     private func selectPlace(_ place: Place) {
@@ -1039,7 +729,6 @@ struct MapHomeView: View {
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
         localStore.addRecentPlace(place)
         dismissSearch()
-        clearNearbySearch()
         activeSheet = nil
 
         routeTask?.cancel()
@@ -1110,20 +799,28 @@ struct MapHomeView: View {
     }
 
     private func resultsPanel(maxHeight: CGFloat) -> some View {
-        Group {
-            if isSearchExpanded {
-                ScrollView(.vertical) {
-                    resultsContent
+        let visibleRowCount = max(1, min(filteredSearchSuggestions.count, 4))
+        let contentHeight = CGFloat(visibleRowCount) * 58
+            + (searchText.isEmpty ? 46 : 0)
+            + (searchErrorMessage == nil ? 0 : 64)
+        return ScrollView(.vertical) {
+            VStack(spacing: 0) {
+                if searchText.isEmpty {
+                    quickPlacesRow
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                    Divider()
                 }
-                .scrollIndicators(.visible)
-                .scrollBounceBehavior(.basedOnSize)
-                .frame(height: maxHeight)
-            } else {
                 resultsContent
             }
         }
+        .scrollIndicators(.visible)
+        .scrollBounceBehavior(.basedOnSize)
         .frame(maxWidth: .infinity)
-        .mapGlassSurface(cornerRadius: 24, glassIntensity: liquidGlassIntensity)
+        .frame(height: min(maxHeight, contentHeight))
+        .mapGlassSurface(cornerRadius: 20, glassIntensity: liquidGlassIntensity)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("placeSearchResultsPanel")
     }
 
     @ViewBuilder
@@ -1150,7 +847,7 @@ struct MapHomeView: View {
                         .padding(16)
                 }
             } else {
-                let visibleResults = isSearchExpanded ? suggestions : Array(suggestions.prefix(5))
+                let visibleResults = suggestions
                 ForEach(visibleResults) { place in
                     Button {
                         selectPlace(place)
@@ -1180,30 +877,11 @@ struct MapHomeView: View {
                     }
                     .buttonStyle(.plain)
                     .transition(reduceMotion ? .opacity : .offset(y: -6).combined(with: .opacity))
-                    if place.id != visibleResults.last?.id || suggestions.count > 5 {
+                    if place.id != visibleResults.last?.id {
                         Divider().padding(.leading, 16)
                     }
                 }
-                if suggestions.count > 5 {
-                    Button {
-                        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) {
-                            isSearchExpanded.toggle()
-                        }
-                    } label: {
-                        HStack {
-                            Text(AppLocalization.string(isSearchExpanded ? "search.less" : "search.more", locale: locale))
-                                .font(.subheadline.weight(.semibold))
-                            Spacer()
-                            Image(systemName: isSearchExpanded ? "chevron.up" : "chevron.down")
-                                .font(.caption.weight(.semibold))
-                        }
-                        .foregroundStyle(.tint)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 11)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                }
+
             }
         }
     }
@@ -1457,32 +1135,6 @@ struct MapHomeView: View {
             } else {
                 EmptyView()
             }
-        case .categories:
-            MapCategoriesSheet(
-                locale: locale,
-                onSelectCategory: { category in
-                    searchNearbyPlaces(for: category)
-                    selectedTab = .categories
-                    activeSheet = nil
-                },
-                onSelectAction: { action in
-                    switch action {
-                    case .saved:
-                        activeSheet = .saved
-                    case .addPlace:
-                        activeSheet = .addPlace(mapCenter)
-                    case .report:
-                        activeSheet = .report(mapCenter)
-                    case .offline:
-                        activeSheet = nil
-                        offlineManager.downloadArea(
-                            around: mapCenter,
-                            styleURL: MapConfiguration.styleURL(isDark: colorScheme == .dark)
-                        )
-                    }
-                },
-                onDismiss: { activeSheet = nil }
-            )
         case .assistant:
             MapAssistantView(
                 userCoordinate: locationManager.coordinate,
@@ -1506,9 +1158,6 @@ struct MapHomeView: View {
             dismissSearch()
             activeSheet = nil
             centerOnMyLocation()
-        case .categories:
-            dismissSearch()
-            activeSheet = .categories
         case .settings:
             dismissSearch()
             activeSheet = nil
@@ -1986,7 +1635,6 @@ private enum HomeSheet: Identifiable {
     case report(GeoCoordinate)
     case quickStops
     case parkedCar
-    case categories
     case assistant
 
     var id: String {
@@ -1997,70 +1645,7 @@ private enum HomeSheet: Identifiable {
         case .report(let coordinate): return "report-\(coordinate.latitude)-\(coordinate.longitude)"
         case .quickStops: return "quick-stops"
         case .parkedCar: return "parked-car"
-        case .categories: return "categories"
         case .assistant: return "assistant"
         }
     }
 }
-
-#if DEBUG
-// Only the explicitly enabled UI fixture uses this signal. Its first provider
-// response stays suspended until XCTest has observed and tapped the loading label.
-private actor NearbySearchUITestFailureGate {
-    static let shared = NearbySearchUITestFailureGate()
-    private var released = false
-    private var continuation: CheckedContinuation<Void, Never>?
-
-    func wait() async {
-        guard !released else { return }
-        await withCheckedContinuation { continuation in
-            self.continuation = continuation
-        }
-    }
-
-    func release() {
-        released = true
-        let pending = continuation
-        continuation = nil
-        pending?.resume()
-    }
-}
-
-private actor NearbySearchUITestAttemptCounter {
-    private var attempts = 0
-
-    func nextAttempt() -> Int {
-        attempts += 1
-        return attempts
-    }
-}
-
-private struct NearbySearchUITestFixtureService: MapAssistantProviding {
-    private let attemptCounter = NearbySearchUITestAttemptCounter()
-
-    func nearbyPlaces(
-        for category: AssistantPlaceCategory,
-        near coordinate: GeoCoordinate,
-        language: String
-    ) async throws -> [Place] {
-        if await attemptCounter.nextAttempt() == 1 {
-            await NearbySearchUITestFailureGate.shared.wait()
-            throw NearbySearchUITestFixtureError.unavailable
-        }
-        return []
-    }
-
-    func weather(at coordinate: GeoCoordinate) async throws -> AssistantWeather {
-        throw NearbySearchUITestFixtureError.unexpectedRequest
-    }
-
-    func nearbyStreet(at coordinate: GeoCoordinate, language: String) async throws -> String? {
-        nil
-    }
-}
-
-private enum NearbySearchUITestFixtureError: Error {
-    case unavailable
-    case unexpectedRequest
-}
-#endif
