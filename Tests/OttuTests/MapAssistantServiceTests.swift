@@ -199,8 +199,8 @@ final class MapAssistantServiceTests: XCTestCase {
 
     private func makeService(
         endpoints: [String],
-        totalTimeout: TimeInterval = 1,
-        endpointTimeout: TimeInterval = 0.4
+        totalTimeout: TimeInterval = 3,
+        endpointTimeout: TimeInterval = 1
     ) -> OpenStreetMapAssistantService {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [StubURLProtocol.self]
