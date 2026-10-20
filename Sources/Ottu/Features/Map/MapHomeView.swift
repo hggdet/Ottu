@@ -552,6 +552,7 @@ struct MapHomeView: View {
                             Image(systemName: "xmark")
                                 .foregroundStyle(.secondary)
                                 .frame(width: 44, height: 44)
+                                .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel(Text(AppLocalization.string("common.close", locale: locale)))
@@ -563,7 +564,13 @@ struct MapHomeView: View {
                             .autocorrectionDisabled()
                             .submitLabel(.search)
                             .onSubmit { searchFocused = false }
-                            .onAppear { searchFocused = true }
+                            .task {
+                                // Focus only after the inserted field has mounted. The task
+                                // is cancelled when closing removes it from the hierarchy.
+                                await Task.yield()
+                                guard !Task.isCancelled, isSearchOpen else { return }
+                                searchFocused = true
+                            }
                             .accessibilityIdentifier("placeSearchField")
                         if isSearching {
                             ProgressView().controlSize(.small)
@@ -578,6 +585,7 @@ struct MapHomeView: View {
                                 Image(systemName: "xmark.circle.fill")
                                     .foregroundStyle(.secondary)
                                     .frame(width: 44, height: 44)
+                                    .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel(Text(AppLocalization.string("search.clear", locale: locale)))

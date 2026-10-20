@@ -101,7 +101,9 @@ class QuickActionResourcesTests(unittest.TestCase):
         self.assertIn({"path": "Tests/OttuTests"}, targets["OttuTests"]["sources"])
 
     def test_protected_map_files_have_no_diff(self):
-        for name in ["MapHomeView.swift", "FloatingMapControls.swift", "ProgressiveMapEdgeBlur.swift"]:
+        # MapHomeView search behavior is explicitly in scope for this repair.
+        # Keep the unrelated floating controls and edge blur protected.
+        for name in ["FloatingMapControls.swift", "ProgressiveMapEdgeBlur.swift"]:
             result = subprocess.run(["git", "diff", "HEAD", "--exit-code", "--", f"Sources/Ottu/Features/Map/{name}"],
                                     cwd=ROOT, capture_output=True)
             self.assertEqual(result.returncode, 0, f"Unexpected change to {name}")

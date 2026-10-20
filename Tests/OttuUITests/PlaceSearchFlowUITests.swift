@@ -13,16 +13,30 @@ final class PlaceSearchFlowUITests: XCTestCase {
     private func verifySearchInteraction(language: String, locale: String) {
         continueAfterFailure = false
         let app = XCUIApplication()
+        app.resetAuthorizationStatus(for: .location)
         app.launchArguments = [
             "-ottu.welcomeMotionCompleted", "YES",
             "-ottu.initialSetupCompleted", "YES",
-            "-ottu.locationExplanationDismissed", "YES",
+            "-ottu.locationExplanationDismissed", "NO",
             "-ottu.language", language,
             "-AppleLanguages", "(\(language))",
             "-AppleLocale", locale
         ]
         app.launch()
         defer { app.terminate() }
+
+        // Resolve the real system prompt before the single search tap. Otherwise
+        // XCTest's default interruption handler denies location and leaves the
+        // app's permission-guidance alert covering the search control.
+        let locationAlert = XCUIApplication(bundleIdentifier: "com.apple.springboard").alerts.firstMatch
+        XCTAssertTrue(locationAlert.waitForExistence(timeout: 15), "Resetting location authorization must produce the system prompt.")
+        let allowLocation = locationAlert.buttons.matching(NSPredicate(
+            format: "label CONTAINS[c] 'While Using' OR label CONTAINS 'أثناء استخدام' OR label CONTAINS 'عند استخدام'"
+        )).firstMatch
+        XCTAssertTrue(allowLocation.waitForExistence(timeout: 5))
+        allowLocation.tap()
+        XCTAssertTrue(locationAlert.waitForNonExistence(timeout: 5))
+        XCTAssertFalse(app.alerts.firstMatch.exists, "No permission alert should intercept the search tap.")
 
         let searchButton = app.buttons["placeSearchButton"]
         XCTAssertTrue(searchButton.waitForExistence(timeout: 15), "The circular place-search control should be present on the map.")
@@ -41,8 +55,13 @@ final class PlaceSearchFlowUITests: XCTestCase {
 
         let closeButton = app.buttons["placeSearchClose"]
         XCTAssertTrue(closeButton.isHittable)
-        closeButton.tap()
-        XCTAssertTrue(searchField.waitForNonExistence(timeout: 5))
+        XCTAssertGreaterThanOrEqual(closeButton.frame.width, 44)
+        XCTAssertGreaterThanOrEqual(closeButton.frame.height, 44)
+        // Tap the padded area, not the xmark glyph: the whole 44pt control
+        // must close search, including when the keyboard is showing.
+        closeButton.coordinate(withNormalizedOffset: CGVector(dx: 0.15, dy: 0.5)).tap()
+        XCTAssertTrue(searchField.waitForNonExistence(timeout: 5), "Close must remove the actual field, not just hide the keyboard.")
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5))
         XCTAssertTrue(searchButton.waitForExistence(timeout: 5))
         XCTAssertTrue(searchButton.isHittable)
         searchButton.tap()
@@ -52,5 +71,19 @@ final class PlaceSearchFlowUITests: XCTestCase {
         XCTAssertNotEqual(searchField.value as? String, "Baghdad", "Closing search must clear the previous query.")
         searchField.typeText("Basra")
         XCTAssertEqual(searchField.value as? String, "Basra", "The reopened field must accept a fresh query.")
+
+        let clearButton = app.buttons["placeSearchClear"]
+        XCTAssertTrue(clearButton.isHittable)
+        clearButton.coordinate(withNormalizedOffset: CGVector(dx: 0.15, dy: 0.5)).tap()
+        XCTAssertTrue(clearButton.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(searchField.exists, "Clear must keep search open.")
+        XCTAssertNotEqual(searchField.value as? String, "Basra")
+        XCTAssertTrue(app.keyboards.firstMatch.exists, "Clear must retain input focus.")
+        searchField.typeText("Erbil")
+        XCTAssertEqual(searchField.value as? String, "Erbil")
+        closeButton.tap()
+        XCTAssertTrue(searchField.waitForNonExistence(timeout: 5), "Close must also work after clearing and typing again.")
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(searchButton.waitForExistence(timeout: 5))
     }
 }
