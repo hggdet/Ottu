@@ -230,6 +230,7 @@ struct MapHomeView: View {
             .padding(.trailing, 14)
             .environment(\.layoutDirection, .leftToRight)
         }
+        .zIndex(20)
         .overlay(alignment: .center) {
             if isAtDestination, let routeTarget {
                 NavigationArrivalCard(

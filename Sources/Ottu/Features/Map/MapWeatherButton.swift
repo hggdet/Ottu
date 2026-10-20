@@ -25,8 +25,17 @@ struct MapWeatherButton: View {
         weatherLocationID == locationID ? weather : nil
     }
 
+    private var isUITestWeatherFixture: Bool {
+#if DEBUG
+        ProcessInfo.processInfo.arguments.contains("-ottuUITestWeatherPopoverFixture")
+#else
+        false
+#endif
+    }
+
     private var isLoading: Bool {
-        activeLocationID == locationID && weatherLocationID != locationID && failedLocationID != locationID
+        isUITestWeatherFixture
+            || (activeLocationID == locationID && weatherLocationID != locationID && failedLocationID != locationID)
     }
 
     private var didFail: Bool {
