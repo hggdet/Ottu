@@ -102,6 +102,19 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: iq.ottu.ios.tests
         SWIFT_VERSION: "5.0"
         IPHONEOS_DEPLOYMENT_TARGET: "26.0"
+  OttuUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    hostApplication: Ottu
+    sources:
+      - path: Tests/OttuUITests
+    dependencies:
+      - target: Ottu
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: iq.ottu.ios.uitests
+        SWIFT_VERSION: "5.0"
+        IPHONEOS_DEPLOYMENT_TARGET: "26.0"
 schemes:
   Ottu:
     build:
@@ -109,10 +122,12 @@ schemes:
         Ottu: all
         OttuWidget: all
         OttuTests: [test]
+        OttuUITests: [test]
     test:
       config: Debug
       targets:
         - OttuTests
+        - OttuUITests
     run:
       config: Debug
     archive:

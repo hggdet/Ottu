@@ -232,6 +232,7 @@
 "assistant.street_format" = "You are near: %@";
 "assistant.street_not_found" = "I couldn't identify a nearby street or area for your location.";
 "assistant.service_unavailable" = "Couldn't retrieve live data right now. Check your connection and try again.";
+"assistant.nearby_unavailable" = "Nearby search is temporarily unavailable. Try again later; your saved places and local results remain available in map search.";
 "assistant.greeting" = "Hello. I can search for a nearby place, show the weather, or identify a nearby street. Enter a clear request or choose a suggestion.";
 "assistant.search_results_format" = "Here are search results for “%@”. Tap a result to open it on the map.";
 "assistant.search_empty_format" = "No results found for “%@”. Try a clearer name or ask about a nearby place.";

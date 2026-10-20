@@ -1,5 +1,6 @@
 import CoreLocation
 import Foundation
+import OSLog
 
 protocol MapAssistantProviding: Sendable {
     func nearbyPlaces(
@@ -11,6 +12,7 @@ protocol MapAssistantProviding: Sendable {
     func weather(at coordinate: GeoCoordinate) async throws -> AssistantWeather
     func nearbyStreet(at coordinate: GeoCoordinate, language: String) async throws -> String?
 }
+
 
 enum AssistantPlaceCategory: String, CaseIterable, Identifiable, Equatable, Sendable {
     case pharmacy
@@ -90,13 +92,13 @@ struct OpenStreetMapAssistantService: MapAssistantProviding {
     private let overpassEndpoints: [String]
     private let totalTimeout: TimeInterval
     private let endpointTimeout: TimeInterval
+    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "Ottu", category: "MapAssistant")
 
     init(
         session: URLSession? = nil,
         overpassEndpoints: [String] = [
             "https://overpass-api.de/api/interpreter",
-            "https://overpass.kumi.systems/api/interpreter",
-            "https://overpass.nchc.org.tw/api/interpreter"
+            "https://overpass.kumi.systems/api/interpreter"
         ],
         totalTimeout: TimeInterval = 13,
         endpointTimeout: TimeInterval = 5
@@ -120,17 +122,19 @@ struct OpenStreetMapAssistantService: MapAssistantProviding {
         near coordinate: GeoCoordinate,
         language: String
     ) async throws -> [Place] {
-        let startTime = ProcessInfo.processInfo.systemUptime
-        var lastError: Error = AssistantServiceError.unavailable
+        let totalDeadline = ProcessInfo.processInfo.systemUptime + totalTimeout
 
         for endpoint in overpassEndpoints {
             try Task.checkCancellation()
-            let remaining = totalTimeout - (ProcessInfo.processInfo.systemUptime - startTime)
-            guard remaining > 0 else { throw lastError }
-            guard let url = URL(string: endpoint) else { continue }
+            let remaining = totalDeadline - ProcessInfo.processInfo.systemUptime
+            guard remaining > 0 else { break }
+            guard let url = URL(string: endpoint), let endpointLabel = Self.safeEndpointLabel(url) else {
+                logger.error("Overpass endpoint configuration is invalid; endpoint omitted")
+                continue
+            }
 
             let requestBudget = min(endpointTimeout, remaining)
-            guard requestBudget > 0 else { throw lastError }
+            guard requestBudget > 0 else { break }
             let overpassTimeout = max(1, Int(ceil(requestBudget)))
             let query = """
             [out:json][timeout:\(overpassTimeout)];
@@ -149,32 +153,51 @@ struct OpenStreetMapAssistantService: MapAssistantProviding {
             request.httpBody = form.percentEncodedQuery?.data(using: .utf8)
 
             do {
-                let (data, response) = try await Self.data(
-                    for: request,
-                    using: session,
-                    timeout: requestBudget
-                )
+                let (data, response) = try await Self.data(for: request, using: session, timeout: requestBudget)
                 try Task.checkCancellation()
-                guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
-                    throw AssistantServiceError.badResponse
+                guard let http = response as? HTTPURLResponse else {
+                    logger.error("Overpass endpoint \(endpointLabel, privacy: .public) returned a non-HTTP response")
+                    continue
                 }
-                let decoded = try JSONDecoder().decode(OverpassResponse.self, from: data)
-                return sortedPlaces(
-                    from: decoded.elements,
-                    near: coordinate,
-                    language: language
-                )
+                guard (200..<300).contains(http.statusCode) else {
+                    logger.error("Overpass endpoint \(endpointLabel, privacy: .public) returned HTTP \(http.statusCode, privacy: .public)")
+                    continue
+                }
+
+                let decoded: OverpassResponse
+                do {
+                    decoded = try JSONDecoder().decode(OverpassResponse.self, from: data)
+                } catch let decodingError as DecodingError {
+                    logger.error("Overpass endpoint \(endpointLabel, privacy: .public) JSON decoding failed: \(Self.safeDecodingDescription(decodingError), privacy: .public)")
+                    continue
+                }
+                if let remark = decoded.remark, !remark.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    let classification = Self.safeRemarkClassification(remark)
+                    logger.error("Overpass endpoint \(endpointLabel, privacy: .public) returned a remark classified as \(classification, privacy: .public); rejecting response (raw remark withheld)")
+                    continue
+                }
+
+                let places = sortedPlaces(from: decoded.elements, near: coordinate, language: language)
+                if places.isEmpty {
+                    logger.info("Overpass endpoint \(endpointLabel, privacy: .public) returned a valid response with no named places")
+                }
+                return places
             } catch is CancellationError {
                 throw CancellationError()
             } catch let error as URLError where error.code == .cancelled {
                 throw CancellationError()
+            } catch AssistantServiceError.requestTimedOut {
+                logger.error("Overpass endpoint \(endpointLabel, privacy: .public) timed out within its assigned \(requestBudget, privacy: .public) second budget")
+            } catch let error as URLError {
+                logger.error("Overpass endpoint \(endpointLabel, privacy: .public) failed with URLSession error code \(error.code.rawValue, privacy: .public)")
             } catch {
                 if Task.isCancelled { throw CancellationError() }
-                lastError = error
+                logger.error("Overpass endpoint \(endpointLabel, privacy: .public) failed with \(String(describing: type(of: error)), privacy: .public)")
             }
         }
 
-        throw lastError
+        try Task.checkCancellation()
+        throw AssistantServiceError.nearbyPlacesUnavailable
     }
 
     private static func data(
@@ -268,7 +291,7 @@ struct OpenStreetMapAssistantService: MapAssistantProviding {
             } else {
                 localizedName = nil
             }
-            guard let name = (localizedName ?? tags["name"] ?? tags["name:\(language)" ] ?? tags["name:en"] ?? tags["name:ar"])?
+            guard let name = (localizedName ?? tags["name"] ?? tags["name:\(language)"] ?? tags["name:en"] ?? tags["name:ar"])?
                 .trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty else { return nil }
 
             let street = tags["addr:street"] ?? tags["addr:place"]
@@ -283,10 +306,18 @@ struct OpenStreetMapAssistantService: MapAssistantProviding {
             )
         }
 
+        return sortedByDistance(places, near: coordinate)
+    }
+
+
+    private func sortedByDistance(_ places: [Place], near coordinate: GeoCoordinate) -> [Place] {
         let origin = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
         return places
             .filter { place in
-                origin.distance(from: CLLocation(latitude: place.coordinate.latitude, longitude: place.coordinate.longitude)) <= Double(searchRadiusMeters)
+                (-90.0...90.0).contains(place.coordinate.latitude) &&
+                    (-180.0...180.0).contains(place.coordinate.longitude) &&
+                    !place.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+                    origin.distance(from: CLLocation(latitude: place.coordinate.latitude, longitude: place.coordinate.longitude)) <= Double(searchRadiusMeters)
             }
             .sorted { lhs, rhs in
                 origin.distance(from: CLLocation(latitude: lhs.coordinate.latitude, longitude: lhs.coordinate.longitude)) <
@@ -296,6 +327,37 @@ struct OpenStreetMapAssistantService: MapAssistantProviding {
             .map { $0 }
     }
 
+    private static func safeEndpointLabel(_ url: URL) -> String? {
+        guard let host = url.host else { return nil }
+        let path = url.path.isEmpty ? "/" : url.path
+        return "\(host)\(path)"
+    }
+
+    private static func safeDecodingDescription(_ error: DecodingError) -> String {
+        switch error {
+        case .keyNotFound(let key, let context):
+            return "missing key \(key.stringValue), coding path: \(context.codingPath.map(\.stringValue).joined(separator: "."))"
+        case .typeMismatch(let type, let context):
+            return "type mismatch for \(String(describing: type)), coding path: \(context.codingPath.map(\.stringValue).joined(separator: "."))"
+        case .valueNotFound(let type, let context):
+            return "missing value for \(String(describing: type)), coding path: \(context.codingPath.map(\.stringValue).joined(separator: "."))"
+        case .dataCorrupted(let context):
+            return "corrupt JSON, coding path: \(context.codingPath.map(\.stringValue).joined(separator: "."))"
+        @unknown default:
+            return "unknown JSON decoding error"
+        }
+    }
+
+    private static func safeRemarkClassification(_ remark: String) -> String {
+        let text = remark.lowercased()
+        if text.contains("timed out") || text.contains("timeout") { return "query timeout" }
+        if text.contains("capacity") || text.contains("queue") { return "server capacity or queue exhaustion" }
+        if text.contains("parse") || text.contains("syntax") { return "query parsing error" }
+        if text.contains("runtime error") { return "runtime error" }
+        if text.contains("rate limit") || text.contains("too many requests") { return "rate limited" }
+        return "unclassified Overpass remark"
+    }
+
     private static func localTime(from value: String?) -> String? {
         guard let value, let time = value.split(separator: "T").last else { return nil }
         let result = String(time.prefix(5))
@@ -303,15 +365,25 @@ struct OpenStreetMapAssistantService: MapAssistantProviding {
     }
 }
 
-private enum AssistantServiceError: Error {
+enum AssistantServiceError: Error {
     case invalidURL
     case badResponse
     case unavailable
     case requestTimedOut
+    case nearbyPlacesUnavailable
+    case malformedResponse
+    case overpassRemark
+    case httpStatus(Int)
+}
+
+private enum AsyncTimeoutOutcome<Value: Sendable>: Sendable {
+    case value(Value)
+    case timedOut
 }
 
 private struct OverpassResponse: Decodable {
     let elements: [OverpassElement]
+    let remark: String?
 }
 
 private struct OverpassElement: Decodable {

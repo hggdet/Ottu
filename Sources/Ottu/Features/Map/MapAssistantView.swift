@@ -323,7 +323,13 @@ struct MapAssistantView: View {
             case .success(let reply):
                 messages.append(reply)
             case .failure:
-                messages.append(AssistantMessage(text: localized("assistant.service_unavailable"), isUser: false,
+                let failureKey: String
+                if case .nearby = AssistantIntentMatcher.match(text) {
+                    failureKey = "assistant.nearby_unavailable"
+                } else {
+                    failureKey = "assistant.service_unavailable"
+                }
+                messages.append(AssistantMessage(text: localized(failureKey), isUser: false,
                                                  places: nil, retryText: text))
             case .timedOut:
                 messages.append(AssistantMessage(text: localized("assistant.timed_out"), isUser: false,
@@ -498,7 +504,7 @@ private enum AssistantQuickPrompt: String, CaseIterable, Identifiable {
     }
 }
 
-private enum AssistantIntent {
+enum AssistantIntent {
     case nearby(AssistantPlaceCategory)
     case weather
     case street
@@ -506,7 +512,7 @@ private enum AssistantIntent {
     case search
 }
 
-private enum AssistantIntentMatcher {
+enum AssistantIntentMatcher {
     static func match(_ text: String) -> AssistantIntent {
         let normalized = normalize(text)
         for category in AssistantPlaceCategory.allCases {
