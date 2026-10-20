@@ -12,6 +12,8 @@ final class PlaceSearchFlowUITests: XCTestCase {
 
     private func verifySearchInteraction(language: String, locale: String) {
         continueAfterFailure = false
+        // Accessibility frames can report 44pt as 43.99999999999997.
+        let hitTargetTolerance: CGFloat = 0.001
         let app = XCUIApplication()
         app.resetAuthorizationStatus(for: .location)
         app.launchArguments = [
@@ -41,8 +43,8 @@ final class PlaceSearchFlowUITests: XCTestCase {
         let searchButton = app.buttons["placeSearchButton"]
         XCTAssertTrue(searchButton.waitForExistence(timeout: 15), "The circular place-search control should be present on the map.")
         XCTAssertTrue(searchButton.isHittable, "The circular place-search control should receive physical taps.")
-        XCTAssertGreaterThanOrEqual(searchButton.frame.width, 44)
-        XCTAssertGreaterThanOrEqual(searchButton.frame.height, 44)
+        XCTAssertGreaterThanOrEqual(searchButton.frame.width, 44 - hitTargetTolerance)
+        XCTAssertGreaterThanOrEqual(searchButton.frame.height, 44 - hitTargetTolerance)
         searchButton.tap()
 
         let searchField = app.textFields["placeSearchField"]
@@ -55,8 +57,8 @@ final class PlaceSearchFlowUITests: XCTestCase {
 
         let closeButton = app.buttons["placeSearchClose"]
         XCTAssertTrue(closeButton.isHittable)
-        XCTAssertGreaterThanOrEqual(closeButton.frame.width, 44)
-        XCTAssertGreaterThanOrEqual(closeButton.frame.height, 44)
+        XCTAssertGreaterThanOrEqual(closeButton.frame.width, 44 - hitTargetTolerance)
+        XCTAssertGreaterThanOrEqual(closeButton.frame.height, 44 - hitTargetTolerance)
         // Tap the padded area, not the xmark glyph: the whole 44pt control
         // must close search, including when the keyboard is showing.
         closeButton.coordinate(withNormalizedOffset: CGVector(dx: 0.15, dy: 0.5)).tap()
