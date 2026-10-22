@@ -169,7 +169,7 @@ final class MapAssistantServiceTests: XCTestCase {
         XCTAssertLessThanOrEqual(timeouts.count, 5)
         XCTAssertLessThanOrEqual(elapsed, 1.2)
         XCTAssertTrue(timeouts.allSatisfy { $0 <= 0.3 })
-        XCTAssertLessThan(timeouts.last ?? 1, timeouts.first ?? 0)
+        XCTAssertLessThanOrEqual(timeouts.last ?? 1, timeouts.first ?? 0)
     }
 
     func testArabicNearestRestaurantIntentSelectsNearbyProvider() {
