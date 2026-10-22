@@ -601,7 +601,7 @@ struct MapHomeView: View {
                 .accessibilityIdentifier("placeSearchControl")
                 .transition(.opacity)
             } else {
-                HStack(spacing: 0) {
+                HStack(spacing: 8) {
                     Button {
                         isSearchOpen = true
                     } label: {
@@ -621,6 +621,7 @@ struct MapHomeView: View {
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                    .glassEffect(.regular.interactive(), in: Capsule())
                     .accessibilityLabel(Text(AppLocalization.string("search.placeholder", locale: locale)))
                     .accessibilityIdentifier("placeSearchButton")
                     MapWeatherButton(
@@ -631,7 +632,6 @@ struct MapHomeView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .frame(height: 44)
-                .glassEffect(.regular.interactive(), in: Capsule())
                 .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("placeSearchClosedControl")
                 .transition(.opacity)
